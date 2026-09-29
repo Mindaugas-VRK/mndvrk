@@ -15,14 +15,14 @@ export default async function ResultsPage(props: PageProps<"/dashboard/reporting
   const { account } = await requireAccount("data:view");
   const { id } = await props.params;
   const sp = await props.searchParams;
-  const period = getPeriod(Number(id), account.id);
+  const period = await getPeriod(Number(id), account.id);
   if (!period) notFound();
   const level = (LEVELS as readonly string[]).includes(String(sp.level)) ? (sp.level as Level) : "total";
   const groupKey = typeof sp.group === "string" && GROUP_BY_KEY.has(sp.group) ? sp.group : undefined;
 
-  const sites = getSites(account.id);
-  const data = loadPeriodData(period.id, account.id);
-  const custom = getCustomFields(account.id);
+  const sites = await getSites(account.id);
+  const data = await loadPeriodData(period.id, account.id);
+  const custom = await getCustomFields(account.id);
   const buckets = level === "total" ? bucketsFor("total", sites) : [...bucketsFor(level, sites), ...bucketsFor("total", sites)];
   const groups = groupKey ? [GROUP_BY_KEY.get(groupKey)!] : KPI_GROUPS;
 

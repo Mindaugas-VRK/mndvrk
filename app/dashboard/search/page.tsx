@@ -16,7 +16,7 @@ export default async function SearchPage(props: PageProps<"/dashboard/search">) 
   const kpis = query ? KPI_GROUPS.filter((g) => match(g.title) || match(g.description) || g.standards.some((s) => match(`${s.name} ${s.ref}`))) : [];
   const fields = query ? ALL_FIELDS.filter((f) => match(f.label) || (f.code && match(f.code))).slice(0, 30) : [];
   const topics = query ? TOPICS.filter((t) => match(t.title) || match(t.summary)) : [];
-  const risks = query ? listRisks(account.id).filter((r) => match(r.title) || match(r.mitigation)) : [];
+  const risks = query ? (await listRisks(account.id)).filter((r) => match(r.title) || match(r.mitigation)) : [];
   const none = query && !kpis.length && !fields.length && !topics.length && !risks.length;
 
   return (

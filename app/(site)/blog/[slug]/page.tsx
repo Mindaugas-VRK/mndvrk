@@ -9,7 +9,7 @@ import { formatDate } from "@/lib/utils";
 export async function generateMetadata(props: PageProps<"/blog/[slug]">): Promise<Metadata> {
   await connection();
   const { slug } = await props.params;
-  const post = getPublishedPost(slug);
+  const post = await getPublishedPost(slug);
   if (!post) return { title: "Post not found" };
   return {
     title: post.title,
@@ -21,7 +21,7 @@ export async function generateMetadata(props: PageProps<"/blog/[slug]">): Promis
 export default async function BlogPostPage(props: PageProps<"/blog/[slug]">) {
   await connection();
   const { slug } = await props.params;
-  const post = getPublishedPost(slug);
+  const post = await getPublishedPost(slug);
   if (!post) notFound();
 
   return (

@@ -3,7 +3,7 @@
 import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { db, first } from "@/lib/db";
 import { ROLES, users } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth/dal";
 import { hashPassword } from "@/lib/auth/password";
@@ -27,10 +27,10 @@ export async function createUser(_: ActionState, formData: FormData): Promise<Ac
     return { fieldErrors: { accountId: ["Users and viewers must belong to an account."] } };
   }
 
-  const exists = db.select({ id: users.id }).from(users).where(eq(users.email, parsed.data.email)).get();
+  const exists = await db.select({ id: users.id }).from(users).where(eq(users.email, parsed.data.email)).then(first);
   if (exists) return { fieldErrors: { email: ["A user with this email already exists."] } };
 
-  db.insert(users)
+  await db.insert(users)
     .values({
       name: parsed.data.name,
       email: parsed.data.email,
@@ -38,20 +38,18 @@ export async function createUser(_: ActionState, formData: FormData): Promise<Ac
       jobTitle: parsed.data.jobTitle,
       accountId: parsed.data.accountId || null,
       passwordHash: await hashPassword(parsed.data.password),
-    })
-    .run();
+    });
 
   revalidatePath("/dashboard/users");
   return { success: `Created ${parsed.data.email}. Share the temporary password with them securely.` };
 }
 
 /** Prevents an admin from removing the last remaining active admin. */
-function isLastActiveAdmin(userId: number) {
-  const others = db
+async function isLastActiveAdmin(userId: number) {
+  const others = await db
     .select({ id: users.id })
     .from(users)
-    .where(and(eq(users.role, "admin"), eq(users.active, true), ne(users.id, userId)))
-    .all();
+    .where(and(eq(users.role, "admin"), eq(users.active, true), ne(users.id, userId)));
   return others.length === 0;
 }
 
@@ -59,11 +57,11 @@ export async function updateUserRole(formData: FormData) {
   await requireUser("users:manage");
   const id = Number(formData.get("id"));
   const role = z.enum(ROLES).parse(formData.get("role"));
-  const target = db.select().from(users).where(eq(users.id, id)).get();
+  const target = await db.select().from(users).where(eq(users.id, id)).then(first);
   if (!target) return;
-  if (target.role === "admin" && role !== "admin" && isLastActiveAdmin(id)) return;
+  if (target.role === "admin" && role !== "admin" && (await isLastActiveAdmin(id))) return;
 
-  db.update(users).set({ role, updatedAt: new Date() }).where(eq(users.id, id)).run();
+  await db.update(users).set({ role, updatedAt: new Date() }).where(eq(users.id, id));
   revalidatePath("/dashboard/users");
 }
 
@@ -71,11 +69,11 @@ export async function toggleUserActive(formData: FormData) {
   const me = await requireUser("users:manage");
   const id = Number(formData.get("id"));
   if (id === me.id) return;
-  const target = db.select().from(users).where(eq(users.id, id)).get();
+  const target = await db.select().from(users).where(eq(users.id, id)).then(first);
   if (!target) return;
-  if (target.active && target.role === "admin" && isLastActiveAdmin(id)) return;
+  if (target.active && target.role === "admin" && (await isLastActiveAdmin(id))) return;
 
-  db.update(users).set({ active: !target.active, updatedAt: new Date() }).where(eq(users.id, id)).run();
+  await db.update(users).set({ active: !target.active, updatedAt: new Date() }).where(eq(users.id, id));
   revalidatePath("/dashboard/users");
 }
 
@@ -85,10 +83,9 @@ export async function resetUserPassword(_: ActionState, formData: FormData): Pro
   const parsed = PasswordSchema.safeParse(formData.get("password"));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
 
-  db.update(users)
+  await db.update(users)
     .set({ passwordHash: await hashPassword(parsed.data), updatedAt: new Date() })
-    .where(eq(users.id, id))
-    .run();
+    .where(eq(users.id, id));
   return { success: "Password reset." };
 }
 
@@ -96,6 +93,6 @@ export async function updateUserAccount(formData: FormData) {
   await requireUser("users:manage");
   const id = Number(formData.get("id"));
   const accountId = Number(formData.get("accountId")) || null;
-  db.update(users).set({ accountId, updatedAt: new Date() }).where(eq(users.id, id)).run();
+  await db.update(users).set({ accountId, updatedAt: new Date() }).where(eq(users.id, id));
   revalidatePath("/dashboard/users");
 }

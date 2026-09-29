@@ -13,9 +13,9 @@ export const metadata: Metadata = { title: "Reporting" };
 
 export default async function ReportingPage() {
   const { user, account } = await requireAccount("data:view");
-  const periods = listPeriods(account.id);
-  const series = new Map(loadSeries(account.id).map((s) => [s.period.id, s.data]));
-  const sites = getSites(account.id);
+  const periods = await listPeriods(account.id);
+  const series = new Map((await loadSeries(account.id)).map((s) => [s.period.id, s.data]));
+  const sites = await getSites(account.id);
 
   return (
     <>

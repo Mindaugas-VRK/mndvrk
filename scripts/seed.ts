@@ -5,7 +5,7 @@
  *   ADMIN_EMAIL=you@esgcounts.eu ADMIN_PASSWORD='…' npm run db:seed
  */
 import { eq } from "drizzle-orm";
-import { db } from "../lib/db";
+import { db, first } from "../lib/db";
 import {
   accounts, assessments, auditLog, entries, kpiNotes, materialTopics, periods, posts, risks, signoffs, sites, targets, users,
 } from "../lib/db/schema";
@@ -18,9 +18,9 @@ const adminPassword = process.env.ADMIN_PASSWORD ?? "ChangeMe-2026!";
 const demo = process.env.SEED_DEMO !== "false";
 
 async function upsertUser(email: string, name: string, role: "admin" | "user" | "viewer", password: string, accountId: number | null, jobTitle: string) {
-  const existing = db.select().from(users).where(eq(users.email, email)).get();
+  const existing = await db.select().from(users).where(eq(users.email, email)).then(first);
   if (existing) return existing.id;
-  return db.insert(users).values({ email, name, role, accountId, jobTitle, passwordHash: await hashPassword(password) }).returning({ id: users.id }).get().id;
+  return await db.insert(users).values({ email, name, role, accountId, jobTitle, passwordHash: await hashPassword(password) }).returning({ id: users.id }).then((r) => r[0].id);
 }
 
 // Deterministic pseudo-random so the demo looks the same on every seed.
@@ -32,18 +32,23 @@ async function main() {
   const adminId = await upsertUser(adminEmail, "ESGCounts Admin", "admin", adminPassword, null, "Platform administrator");
   console.log(`✓ admin: ${adminEmail}${process.env.ADMIN_PASSWORD ? "" : ` / ${adminPassword}  (set ADMIN_PASSWORD to choose your own)`}`);
   if (!demo) return;
-  if (db.select().from(accounts).where(eq(accounts.name, "Baltic Manufacturing UAB")).get()) {
+  if (await db.select().from(accounts).where(eq(accounts.name, "Baltic Manufacturing UAB")).then(first)) {
     console.log("Demo data already present, skipping.");
     return;
   }
 
-  const acc = db.insert(accounts).values({ name: "Baltic Manufacturing UAB", industry: "Industrial manufacturing", country: "Lithuania" }).returning({ id: accounts.id }).get().id;
-  const siteRows = [
+  const acc = await db.insert(accounts).values({ name: "Baltic Manufacturing UAB", industry: "Industrial manufacturing", country: "Lithuania" }).returning({ id: accounts.id }).then((r) => r[0].id);
+  const siteDefs = [
     { name: "Vilnius HQ", region: "Baltics", country: "Lithuania", city: "Vilnius", scale: 0.35 },
     { name: "Kaunas plant", region: "Baltics", country: "Lithuania", city: "Kaunas", scale: 1.6 },
     { name: "Riga warehouse", region: "Baltics", country: "Latvia", city: "Riga", scale: 0.6 },
     { name: "Gothenburg plant", region: "Nordics", country: "Sweden", city: "Gothenburg", scale: 1.1 },
-  ].map((s) => ({ ...s, id: db.insert(sites).values({ accountId: acc, name: s.name, region: s.region, country: s.country, city: s.city }).returning({ id: sites.id }).get().id }));
+  ];
+  const siteRows = [];
+  for (const s of siteDefs) {
+    const [row] = await db.insert(sites).values({ accountId: acc, name: s.name, region: s.region, country: s.country, city: s.city }).returning({ id: sites.id });
+    siteRows.push({ ...s, id: row.id });
+  }
 
   const pwd = "Demo-2026-pass";
   const userId = await upsertUser("engineer@demo.esgcounts.eu", "Lina Petrauskė", "user", pwd, acc, "Environmental engineer");
@@ -99,7 +104,7 @@ async function main() {
     { y: 2025, trend: 0.86, status: "draft" as const },
   ];
   for (const { y, trend, status } of years) {
-    const pid = db.insert(periods).values({ accountId: acc, title: `FY ${y}`, startDate: `${y}-01-01`, endDate: `${y}-12-31`, ownerId: userId, status }).returning({ id: periods.id }).get().id;
+    const pid = await db.insert(periods).values({ accountId: acc, title: `FY ${y}`, startDate: `${y}-01-01`, endDate: `${y}-12-31`, ownerId: userId, status }).returning({ id: periods.id }).then((r) => r[0].id);
     const partial = status === "draft";
     const rows: (typeof entries.$inferInsert)[] = [];
     for (const s of siteRows) {
@@ -122,25 +127,25 @@ async function main() {
       rows.push({ periodId: pid, siteId: 0, fieldKey: key, value: f.dimension === "count" ? Math.round(v) : v, unit: defaultUnit(f.dimension), updatedById: key.startsWith("comp") ? hrId : userId });
     }
     for (const [key, t] of Object.entries(texts)) rows.push({ periodId: pid, siteId: 0, fieldKey: key, value: null, text: t, updatedById: userId });
-    db.insert(entries).values(rows).run();
+    await db.insert(entries).values(rows);
 
     if (status === "approved") {
       const at = (d: number) => new Date(`${y + 1}-02-${String(d).padStart(2, "0")}T10:00:00Z`);
-      db.insert(signoffs).values([
+      await db.insert(signoffs).values([
         { accountId: acc, subject: `period:${pid}`, stage: "prepared", userId, at: at(5) },
         { accountId: acc, subject: `period:${pid}`, stage: "reviewed", userId: hrId, at: at(10) },
         { accountId: acc, subject: `period:${pid}`, stage: "approved", userId: managerId, at: at(13) },
-      ]).run();
+      ]);
     }
-    db.insert(auditLog).values({ userId, accountId: acc, action: "created", entity: `period:${pid}`, detail: `FY ${y}` }).run();
+    await db.insert(auditLog).values({ userId, accountId: acc, action: "created", entity: `period:${pid}`, detail: `FY ${y}` });
   }
 
-  db.insert(targets).values([
+  await db.insert(targets).values([
     { accountId: acc, fieldKey: "scope1_total", year: 2026, value: 2800 },
     { accountId: acc, fieldKey: "scope2_location", year: 2026, value: 3200 },
     { accountId: acc, fieldKey: "energy_total", year: 2026, value: 70_000 },
     { accountId: acc, fieldKey: "water_consumption", year: 2026, value: 90 },
-  ]).run();
+  ]);
 
   const topicContent: Record<string, string> = {
     "climate-change": "## Climate policy\n\nWe commit to reducing absolute Scope 1 and 2 emissions by **42% by 2030** from a 2023 base year, in line with a 1.5 °C pathway.\n\n- Energy management system certified to ISO 50001 at the Kaunas plant\n- 100% renewable electricity procurement by 2027\n- Annual Scope 3 screening of the top 50 suppliers\n\n## Procedures\n\nSite engineers submit monthly meter readings; the environmental engineer consolidates them quarterly and prepares the annual GRI 302 and 305 disclosures.",
@@ -151,11 +156,11 @@ async function main() {
     "anti-corruption": "## Anti-corruption\n\nZero-tolerance policy; annual training for all at-risk staff; whistle-blowing channel operated by a third party.",
   };
   for (const [topicKey, content] of Object.entries(topicContent)) {
-    db.insert(materialTopics).values({ accountId: acc, topicKey, content, isMaterial: true }).run();
+    await db.insert(materialTopics).values({ accountId: acc, topicKey, content, isMaterial: true });
   }
-  db.insert(materialTopics).values({ accountId: acc, topicKey: "tax", isMaterial: false, content: "" }).run();
+  await db.insert(materialTopics).values({ accountId: acc, topicKey: "tax", isMaterial: false, content: "" });
 
-  db.insert(assessments).values({
+  await db.insert(assessments).values({
     accountId: acc,
     data: {
       existingTopics: "Climate change, workplace safety and water were reported in the 2023 sustainability statement.",
@@ -170,7 +175,7 @@ async function main() {
       nextAssessment: "2026-10-01",
       step1Done: "1", step2Done: "1", step3Done: "1",
     },
-  }).run();
+  });
 
   const riskRows: Omit<typeof risks.$inferInsert, "accountId">[] = [
     { title: "Water scarcity at the Riga warehouse", topicKey: "water", physical: "Drought reduces municipal supply", regulatory: "Tighter abstraction permits", reputational: "", financial: "Higher water tariffs", probability: "B", impact: 4, probabilityRationale: "Two dry summers in the last three years", impactRationale: "Operations would pause for cleaning processes", mitigation: "Install rainwater harvesting; closed-loop washing", monitoring: "Monthly withdrawal vs permit; GRI 303 KPIs" },
@@ -182,22 +187,22 @@ async function main() {
     { title: "Rising energy prices", topicKey: "climate-change", financial: "Energy is 9% of cost of goods sold", probability: "B", impact: 2, mitigation: "PPA for renewable electricity", monitoring: "Energy intensity (GRI 302-3)" },
     { title: "Bribery by agents in new markets", topicKey: "anti-corruption", regulatory: "Anti-bribery laws", reputational: "Loss of licences", probability: "D", impact: 4, mitigation: "Agent due diligence and training", monitoring: "Confirmed incidents (GRI 2-27)" },
   ];
-  db.insert(risks).values(riskRows.map((r) => ({ ...r, accountId: acc, ownerId: userId }))).run();
-  db.insert(signoffs).values([
+  await db.insert(risks).values(riskRows.map((r) => ({ ...r, accountId: acc, ownerId: userId })));
+  await db.insert(signoffs).values([
     { accountId: acc, subject: "risks", stage: "prepared", userId, at: new Date("2026-02-05T10:00:00Z") },
     { accountId: acc, subject: "risks", stage: "reviewed", userId: hrId, at: new Date("2026-02-10T10:00:00Z") },
-  ]).run();
+  ]);
 
-  db.insert(kpiNotes).values([
+  await db.insert(kpiNotes).values([
     { accountId: acc, groupKey: "emissions", procedure: "1. Site engineers record fuel and electricity use from meters and invoices monthly (GRI 302-1).\n2. The environmental engineer applies DEFRA and IEA factors to calculate Scope 1 and 2 by source.\n3. Scope 3 is screened annually using spend data and supplier surveys.\n4. Results are prepared, reviewed by HR/finance and approved by the country manager." },
     { accountId: acc, groupKey: "energy", procedure: "Monthly meter readings in kWh per site, with the meter number recorded as the reference. Fuels are taken from invoices and converted to GJ." },
-  ]).run();
+  ]);
 
   const postRows = [
     { slug: "welcome-to-esgcounts", title: "Welcome to ESGCounts", excerpt: "Why we are building ESG reporting software that is simple and affordable for European companies.", content: "Sustainability reporting is changing fast. With the **CSRD** and the ESRS, thousands of European companies are reporting on their environmental and social impact for the first time.\n\nOur mission is to provide customised ESG reporting software that makes reporting **simple and affordable**:\n\n- Risks and materiality assessments\n- ESG KPIs reporting, starting with GRI\n- Disclosures in line with ESG standards, regulations and frameworks\n\nStay tuned for product news." },
     { slug: "gri-energy-and-emissions-explained", title: "GRI 302 and 305 explained: from meter readings to tCO₂e", excerpt: "How site-level energy data rolls up into your Scope 1 and 2 disclosures.", content: "## Start with energy\n\nGRI 302-1 asks for fuel consumption, electricity, heating, cooling and steam, and energy sold. The total is:\n\n> a + b + c − d\n\n## Then emissions\n\nMultiply energy by country- and fuel-specific conversion factors to get Scope 1 and Scope 2 (GRI 305-1 and 305-2).\n\nIn ESGCounts you enter meter readings per site in kWh; totals roll up automatically by city, country and region." },
   ];
-  for (const p of postRows) db.insert(posts).values({ ...p, published: true, publishedAt: new Date(), authorId: adminId }).run();
+  for (const p of postRows) await db.insert(posts).values({ ...p, published: true, publishedAt: new Date(), authorId: adminId });
   console.log("✓ demo account, 4 sites, 3 reporting periods, 8 risks, blog posts");
 }
 

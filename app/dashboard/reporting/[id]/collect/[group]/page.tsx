@@ -17,13 +17,13 @@ export default async function CollectPage(props: PageProps<"/dashboard/reporting
   const { user, account } = await requireAccount("data:view");
   const { id, group: groupKey } = await props.params;
   const { site } = await props.searchParams;
-  const period = getPeriod(Number(id), account.id);
+  const period = await getPeriod(Number(id), account.id);
   const group = GROUP_BY_KEY.get(groupKey);
   if (!period || !group) notFound();
 
-  const sites = getSites(account.id);
-  const custom = getCustomFields(account.id).filter((c) => c.groupKey === groupKey);
-  const data = loadPeriodData(period.id, account.id);
+  const sites = await getSites(account.id);
+  const custom = (await getCustomFields(account.id)).filter((c) => c.groupKey === groupKey);
+  const data = await loadPeriodData(period.id, account.id);
 
   const disclosures = [
     ...group.disclosures,

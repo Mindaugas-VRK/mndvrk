@@ -7,7 +7,7 @@ import { ConfirmButton } from "@/components/confirm-button";
 import { PostForm } from "@/components/forms/post-form";
 import { Card, PageHeader } from "@/components/ui";
 import { requireUser } from "@/lib/auth/dal";
-import { db } from "@/lib/db";
+import { db, first } from "@/lib/db";
 import { posts } from "@/lib/db/schema";
 
 export const metadata: Metadata = { title: "Edit post" };
@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Edit post" };
 export default async function EditPostPage(props: PageProps<"/dashboard/blog/[id]">) {
   await requireUser("blog:manage");
   const { id } = await props.params;
-  const post = Number.isInteger(Number(id)) ? db.select().from(posts).where(eq(posts.id, Number(id))).get() : undefined;
+  const post = Number.isInteger(Number(id)) ? await db.select().from(posts).where(eq(posts.id, Number(id))).then(first) : undefined;
   if (!post) notFound();
 
   return (

@@ -8,7 +8,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const pages = ["", "/features", "/about", "/blog", "/contact", "/privacy"].map((p) => ({
     url: `${SITE_URL}${p}`,
   }));
-  const posts = getPublishedPosts().map((p) => ({
+  const posts = (await getPublishedPosts()).map((p) => ({
     url: `${SITE_URL}/blog/${p.slug}`,
     lastModified: p.publishedAt ?? undefined,
   }));

@@ -16,7 +16,7 @@ export default async function TopicCategoryPage(props: PageProps<"/dashboard/mat
         title={TOPIC_CATEGORIES[c].title}
         crumbs={[{ label: "Materiality", href: "/dashboard/materiality" }, { label: "Material topics", href: "/dashboard/materiality" }]}
       />
-      <TopicGrid categories={[c]} states={getTopicStates(account.id)} />
+      <TopicGrid categories={[c]} states={await getTopicStates(account.id)} />
     </>
   );
 }

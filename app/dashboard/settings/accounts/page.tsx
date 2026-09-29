@@ -9,7 +9,8 @@ export const metadata: Metadata = { title: "Accounts" };
 
 export default async function AccountsPage() {
   const user = await requireUser("accounts:manage");
-  const list = accessibleAccounts(user);
+  const list = await accessibleAccounts(user);
+  const siteCounts = new Map(await Promise.all(list.map(async (a) => [a.id, (await getSites(a.id, true)).length] as const)));
   return (
     <>
       <PageHeader title="Accounts" crumbs={[{ label: "Admin" }]} description="Client organisations that report through ESGCounts, with their sites and custom KPIs." />
@@ -24,7 +25,7 @@ export default async function AccountsPage() {
                 <td className="px-5 py-3"><Link href={`/dashboard/settings/accounts/${a.id}`} className="font-semibold text-ink-500 hover:text-teal-500">{a.name}</Link></td>
                 <td className="px-5 py-3 text-ink-400">{a.industry || "—"}</td>
                 <td className="px-5 py-3 text-ink-400">{a.country || "—"}</td>
-                <td className="px-5 py-3 text-ink-500">{getSites(a.id, true).length}</td>
+                <td className="px-5 py-3 text-ink-500">{siteCounts.get(a.id) ?? 0}</td>
               </tr>
             ))}
             {list.length === 0 && <tr><td colSpan={4} className="px-5 py-8 text-center text-ink-400">No accounts yet.</td></tr>}

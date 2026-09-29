@@ -14,11 +14,10 @@ export async function saveProcedure(_: ActionState, formData: FormData): Promise
   const groupKey = String(formData.get("group"));
   if (!GROUP_BY_KEY.has(groupKey)) return { error: "Unknown KPI." };
   const procedure = String(formData.get("procedure") ?? "").slice(0, 50_000);
-  db.insert(kpiNotes)
+  await db.insert(kpiNotes)
     .values({ accountId: account.id, groupKey, procedure, updatedAt: new Date() })
-    .onConflictDoUpdate({ target: [kpiNotes.accountId, kpiNotes.groupKey], set: { procedure, updatedAt: new Date() } })
-    .run();
-  audit({ userId: user.id, accountId: account.id, action: "updated procedure", entity: `kpi:${groupKey}` });
+    .onConflictDoUpdate({ target: [kpiNotes.accountId, kpiNotes.groupKey], set: { procedure, updatedAt: new Date() } });
+  await audit({ userId: user.id, accountId: account.id, action: "updated procedure", entity: `kpi:${groupKey}` });
   revalidatePath(`/dashboard/kpis/${groupKey}`);
   return { success: "Procedure saved." };
 }
@@ -33,16 +32,15 @@ export async function saveTarget(_: ActionState, formData: FormData): Promise<Ac
   const group = String(formData.get("group"));
 
   if (raw === "") {
-    db.delete(targets).where(and(eq(targets.accountId, account.id), eq(targets.fieldKey, fieldKey), eq(targets.year, year))).run();
+    await db.delete(targets).where(and(eq(targets.accountId, account.id), eq(targets.fieldKey, fieldKey), eq(targets.year, year)));
   } else {
     const value = Number(raw);
     if (!Number.isFinite(value)) return { error: "Target must be a number." };
-    db.insert(targets)
+    await db.insert(targets)
       .values({ accountId: account.id, fieldKey, year, value })
-      .onConflictDoUpdate({ target: [targets.accountId, targets.fieldKey, targets.year], set: { value } })
-      .run();
+      .onConflictDoUpdate({ target: [targets.accountId, targets.fieldKey, targets.year], set: { value } });
   }
-  audit({ userId: user.id, accountId: account.id, action: "set target", entity: `kpi:${group}`, detail: `${field.label} ${year}: ${raw || "removed"}` });
+  await audit({ userId: user.id, accountId: account.id, action: "set target", entity: `kpi:${group}`, detail: `${field.label} ${year}: ${raw || "removed"}` });
   revalidatePath(`/dashboard/kpis/${group}`);
   revalidatePath("/dashboard");
   return { success: "Target saved." };

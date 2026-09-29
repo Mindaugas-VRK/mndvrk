@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "ESG KPIs" };
 
 export default async function KpisPage() {
   const { account } = await requireAccount("data:view");
-  const latest = loadSeries(account.id).at(-1);
+  const latest = (await loadSeries(account.id)).at(-1);
   return (
     <>
       <PageHeader title="ESG KPI's" description="GRI indicators grouped by topic. Open a KPI for its procedure, trend, targets and standards." />

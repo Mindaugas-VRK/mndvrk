@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Risk matrix" };
 
 export default async function RiskMatrixPage() {
   const { user, account } = await requireAccount("data:view");
-  const risks = listRisks(account.id);
+  const risks = await listRisks(account.id);
   const counts = new Map<number, number>();
   for (const r of risks) {
     const s = riskScore(r.probability, r.impact);
@@ -45,7 +45,7 @@ export default async function RiskMatrixPage() {
         </ol>
       </Card>
       <div className="mt-6">
-        <SignoffCards subject="risks" signoffs={getSignoffs(account.id, "risks")} user={user} path="/dashboard/risks" />
+        <SignoffCards subject="risks" signoffs={await getSignoffs(account.id, "risks")} user={user} path="/dashboard/risks" />
       </div>
     </>
   );

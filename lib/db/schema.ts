@@ -1,12 +1,16 @@
-import { sql } from "drizzle-orm";
 import {
+  boolean,
+  doublePrecision,
+  index,
   integer,
+  jsonb,
+  pgTable,
   primaryKey,
-  real,
-  sqliteTable,
+  serial,
   text,
+  timestamp,
   uniqueIndex,
-} from "drizzle-orm/sqlite-core";
+} from "drizzle-orm/pg-core";
 
 export const ROLES = ["admin", "user", "viewer"] as const;
 export type Role = (typeof ROLES)[number];
@@ -20,14 +24,16 @@ export type SignoffStage = (typeof SIGNOFF_STAGES)[number];
 export const PROBABILITIES = ["A", "B", "C", "D", "E"] as const;
 export type Probability = (typeof PROBABILITIES)[number];
 
+const ts = (name: string) => timestamp(name, { withTimezone: true }).notNull().defaultNow();
+
 const timestamps = {
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  createdAt: ts("created_at"),
+  updatedAt: ts("updated_at"),
 };
 
 /** A client organisation ("account") that reports ESG data. */
-export const accounts = sqliteTable("accounts", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const accounts = pgTable("accounts", {
+  id: serial("id").primaryKey(),
   name: text("name").notNull(),
   industry: text("industry").notNull().default(""),
   country: text("country").notNull().default(""),
@@ -35,19 +41,19 @@ export const accounts = sqliteTable("accounts", {
 });
 
 /** Physical locations. Region → Country → City → Site is the rollup hierarchy. */
-export const sites = sqliteTable("sites", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const sites = pgTable("sites", {
+  id: serial("id").primaryKey(),
   accountId: integer("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   region: text("region").notNull().default(""),
   country: text("country").notNull().default(""),
   city: text("city").notNull().default(""),
-  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  active: boolean("active").notNull().default(true),
   ...timestamps,
 });
 
-export const users = sqliteTable("users", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
@@ -55,25 +61,25 @@ export const users = sqliteTable("users", {
   /** Users and viewers belong to one account. Admins can access every account. */
   accountId: integer("account_id").references(() => accounts.id, { onDelete: "set null" }),
   jobTitle: text("job_title").notNull().default(""),
-  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  active: boolean("active").notNull().default(true),
   ...timestamps,
 });
 
-export const posts = sqliteTable("posts", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const posts = pgTable("posts", {
+  id: serial("id").primaryKey(),
   slug: text("slug").notNull().unique(),
   title: text("title").notNull(),
   excerpt: text("excerpt").notNull().default(""),
   content: text("content").notNull().default(""),
-  published: integer("published", { mode: "boolean" }).notNull().default(false),
-  publishedAt: integer("published_at", { mode: "timestamp" }),
+  published: boolean("published").notNull().default(false),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
   authorId: integer("author_id").references(() => users.id, { onDelete: "set null" }),
   ...timestamps,
 });
 
 /** A reporting period for one account (e.g. FY 2025, 1 Jan – 31 Dec). */
-export const periods = sqliteTable("periods", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const periods = pgTable("periods", {
+  id: serial("id").primaryKey(),
   accountId: integer("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   startDate: text("start_date").notNull(),
@@ -82,74 +88,74 @@ export const periods = sqliteTable("periods", {
   ownerId: integer("owner_id").references(() => users.id, { onDelete: "set null" }),
   status: text("status", { enum: PERIOD_STATUSES }).notNull().default("draft"),
   ...timestamps,
-});
+}, (t) => [index("periods_account_idx").on(t.accountId)]);
 
 /**
  * One data point. siteId = 0 means an account-level value (disclosures,
  * organisation-specific denominators, remuneration, …).
  */
-export const entries = sqliteTable(
+export const entries = pgTable(
   "entries",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     periodId: integer("period_id").notNull().references(() => periods.id, { onDelete: "cascade" }),
     siteId: integer("site_id").notNull().default(0),
     fieldKey: text("field_key").notNull(),
-    value: real("value"),
+    value: doublePrecision("value"),
     unit: text("unit").notNull().default(""),
     text: text("text").notNull().default(""),
     reference: text("reference").notNull().default(""),
     comment: text("comment").notNull().default(""),
     updatedById: integer("updated_by_id").references(() => users.id, { onDelete: "set null" }),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+    updatedAt: ts("updated_at"),
   },
   (t) => [uniqueIndex("entries_period_site_field").on(t.periodId, t.siteId, t.fieldKey)],
 );
 
 /** Account-specific KPI fields on top of the GRI catalogue. Keyed as `custom:<id>`. */
-export const customFields = sqliteTable("custom_fields", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const customFields = pgTable("custom_fields", {
+  id: serial("id").primaryKey(),
   accountId: integer("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
   groupKey: text("group_key").notNull(),
   label: text("label").notNull(),
   dimension: text("dimension").notNull().default("number"),
-  siteLevel: integer("site_level", { mode: "boolean" }).notNull().default(true),
+  siteLevel: boolean("site_level").notNull().default(true),
   description: text("description").notNull().default(""),
   ...timestamps,
 });
 
 /** Prepared / Reviewed / Approved sign-offs. subject: "period:<id>", "risks", "materiality". */
-export const signoffs = sqliteTable("signoffs", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const signoffs = pgTable("signoffs", {
+  id: serial("id").primaryKey(),
   accountId: integer("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
   subject: text("subject").notNull(),
   stage: text("stage", { enum: SIGNOFF_STAGES }).notNull(),
   userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
-  at: integer("at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-});
+  at: ts("at"),
+}, (t) => [uniqueIndex("signoffs_subject_stage").on(t.accountId, t.subject, t.stage)]);
 
-export const materialTopics = sqliteTable(
+export const materialTopics = pgTable(
   "material_topics",
   {
     accountId: integer("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
     topicKey: text("topic_key").notNull(),
-    isMaterial: integer("is_material", { mode: "boolean" }).notNull().default(true),
+    isMaterial: boolean("is_material").notNull().default(true),
     /** Policies and procedures, markdown. */
     content: text("content").notNull().default(""),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+    updatedAt: ts("updated_at"),
   },
   (t) => [primaryKey({ columns: [t.accountId, t.topicKey] })],
 );
 
 /** Materiality assessment workspace, one per account (JSON blob of step notes). */
-export const assessments = sqliteTable("assessments", {
+export const assessments = pgTable("assessments", {
   accountId: integer("account_id").primaryKey().references(() => accounts.id, { onDelete: "cascade" }),
-  data: text("data", { mode: "json" }).$type<Record<string, string>>().notNull().default({}),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  data: jsonb("data").$type<Record<string, string>>().notNull().default({}),
+  updatedAt: ts("updated_at"),
 });
 
-export const risks = sqliteTable("risks", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const risks = pgTable("risks", {
+  id: serial("id").primaryKey(),
   accountId: integer("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   topicKey: text("topic_key").notNull().default(""),
@@ -168,38 +174,38 @@ export const risks = sqliteTable("risks", {
 });
 
 /** KPI procedure text per account and KPI group. */
-export const kpiNotes = sqliteTable(
+export const kpiNotes = pgTable(
   "kpi_notes",
   {
     accountId: integer("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
     groupKey: text("group_key").notNull(),
     procedure: text("procedure").notNull().default(""),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+    updatedAt: ts("updated_at"),
   },
   (t) => [primaryKey({ columns: [t.accountId, t.groupKey] })],
 );
 
-export const targets = sqliteTable(
+export const targets = pgTable(
   "targets",
   {
     accountId: integer("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
     fieldKey: text("field_key").notNull(),
     year: integer("year").notNull(),
-    value: real("value").notNull(),
+    value: doublePrecision("value").notNull(),
   },
   (t) => [primaryKey({ columns: [t.accountId, t.fieldKey, t.year] })],
 );
 
 /** Append-only audit trail. */
-export const auditLog = sqliteTable("audit_log", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  at: integer("at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+export const auditLog = pgTable("audit_log", {
+  id: serial("id").primaryKey(),
+  at: ts("at"),
   userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
   accountId: integer("account_id").references(() => accounts.id, { onDelete: "cascade" }),
   action: text("action").notNull(),
   entity: text("entity").notNull(),
   detail: text("detail").notNull().default(""),
-});
+}, (t) => [index("audit_log_account_idx").on(t.accountId, t.id)]);
 
 export type Account = typeof accounts.$inferSelect;
 export type Site = typeof sites.$inferSelect;

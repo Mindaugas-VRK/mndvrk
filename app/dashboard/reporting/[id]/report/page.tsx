@@ -16,14 +16,15 @@ export const metadata: Metadata = { title: "GRI report" };
 export default async function ReportPage(props: PageProps<"/dashboard/reporting/[id]/report">) {
   const { account } = await requireAccount("data:view");
   const { id } = await props.params;
-  const period = getPeriod(Number(id), account.id);
+  const period = await getPeriod(Number(id), account.id);
   if (!period) notFound();
-  const data = loadPeriodData(period.id, account.id);
+  const data = await loadPeriodData(period.id, account.id);
   const total = data.total();
-  const sites = getSites(account.id);
-  const custom = getCustomFields(account.id);
-  const signoffs = getSignoffs(account.id, `period:${period.id}`);
-  const material = TOPICS.filter((t) => getTopicStates(account.id).get(t.key)?.isMaterial ?? true);
+  const sites = await getSites(account.id);
+  const custom = await getCustomFields(account.id);
+  const signoffs = await getSignoffs(account.id, `period:${period.id}`);
+  const topicStates = await getTopicStates(account.id);
+  const material = TOPICS.filter((t) => topicStates.get(t.key)?.isMaterial ?? true);
 
   const value = (f: Field) => {
     if (f.kind === "text" || f.kind === "choice") return data.text(f.key) || "Not reported";

@@ -1,27 +1,44 @@
-import fs from "node:fs";
-import path from "node:path";
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import * as schema from "./schema";
 
 function createDb() {
-  const file = process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "esgcounts.db");
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-
-  const sqlite = new Database(file);
-  sqlite.pragma("journal_mode = WAL");
-  sqlite.pragma("foreign_keys = ON");
-
-  const db = drizzle(sqlite, { schema });
-  migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
-  return db;
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error("DATABASE_URL is not set. See .env.example.");
+  }
+  const client = postgres(url, {
+    // Serverless functions each hold their own pool, so keep it small.
+    max: process.env.VERCEL ? 3 : 10,
+    idle_timeout: 20,
+    // Works with connection poolers (PgBouncer / Neon pooled endpoints).
+    prepare: false,
+  });
+  return drizzle(client, { schema });
 }
 
-// Reuse one connection across hot reloads in development.
-const globalForDb = globalThis as unknown as { db?: ReturnType<typeof createDb> };
+type Db = ReturnType<typeof createDb>;
 
-export const db = globalForDb.db ?? createDb();
-if (process.env.NODE_ENV !== "production") globalForDb.db = db;
+// One pool per process; reused across hot reloads in development.
+const globalForDb = globalThis as unknown as { db?: Db };
+
+function getDb(): Db {
+  if (!globalForDb.db) globalForDb.db = createDb();
+  return globalForDb.db;
+}
+
+/** Lazily connects on first use so builds don't need a database. */
+export const db = new Proxy({} as Db, {
+  get(_, prop) {
+    const real = getDb();
+    const value = Reflect.get(real, prop, real);
+    return typeof value === "function" ? value.bind(real) : value;
+  },
+});
+
+export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
 export { schema };
+
+/** First row of a query, or undefined. Usage: `await db.select()…where(…).then(first)`. */
+export const first = <T>(rows: T[]): T | undefined => rows[0];

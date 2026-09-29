@@ -1,10 +1,10 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { db, first } from "@/lib/db";
 import { entries, periods, signoffs, sites } from "@/lib/db/schema";
 import { assertAccountAccess, requireAccount, requireUser } from "@/lib/auth/dal";
 import { audit } from "@/lib/audit";
@@ -28,12 +28,11 @@ export async function createPeriod(_: ActionState, formData: FormData): Promise<
   const { user, account } = await requireAccount("periods:create");
   const parsed = PeriodSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
-  const row = db
+  const [row] = await db
     .insert(periods)
     .values({ ...parsed.data, ownerId: parsed.data.ownerId || user.id, accountId: account.id })
-    .returning({ id: periods.id })
-    .get();
-  audit({ userId: user.id, accountId: account.id, action: "created", entity: `period:${row.id}`, detail: parsed.data.title });
+    .returning({ id: periods.id });
+  await audit({ userId: user.id, accountId: account.id, action: "created", entity: `period:${row.id}`, detail: parsed.data.title });
   redirect(`/dashboard/reporting/${row.id}`);
 }
 
@@ -42,11 +41,11 @@ export async function updatePeriod(_: ActionState, formData: FormData): Promise<
   const id = Number(formData.get("id"));
   const parsed = PeriodSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
-  const period = db.select().from(periods).where(and(eq(periods.id, id), eq(periods.accountId, account.id))).get();
+  const period = await db.select().from(periods).where(and(eq(periods.id, id), eq(periods.accountId, account.id))).then(first);
   if (!period) return { error: "Reporting period not found." };
   if (period.status === "approved") return { error: "Approved periods are locked. An admin can reopen them." };
-  db.update(periods).set({ ...parsed.data, ownerId: parsed.data.ownerId || period.ownerId, updatedAt: new Date() }).where(eq(periods.id, id)).run();
-  audit({ userId: user.id, accountId: account.id, action: "updated details", entity: `period:${id}` });
+  await db.update(periods).set({ ...parsed.data, ownerId: parsed.data.ownerId || period.ownerId, updatedAt: new Date() }).where(eq(periods.id, id));
+  await audit({ userId: user.id, accountId: account.id, action: "updated details", entity: `period:${id}` });
   revalidatePath(`/dashboard/reporting/${id}`);
   return { success: "Saved." };
 }
@@ -54,9 +53,9 @@ export async function updatePeriod(_: ActionState, formData: FormData): Promise<
 export async function deletePeriod(formData: FormData) {
   const { user, account } = await requireAccount("periods:delete");
   const id = Number(formData.get("id"));
-  db.delete(periods).where(and(eq(periods.id, id), eq(periods.accountId, account.id))).run();
-  db.delete(signoffs).where(and(eq(signoffs.accountId, account.id), eq(signoffs.subject, `period:${id}`))).run();
-  audit({ userId: user.id, accountId: account.id, action: "deleted", entity: `period:${id}` });
+  await db.delete(periods).where(and(eq(periods.id, id), eq(periods.accountId, account.id)));
+  await db.delete(signoffs).where(and(eq(signoffs.accountId, account.id), eq(signoffs.subject, `period:${id}`)));
+  await audit({ userId: user.id, accountId: account.id, action: "deleted", entity: `period:${id}` });
   revalidatePath("/dashboard", "layout");
   redirect("/dashboard/reporting");
 }
@@ -78,16 +77,16 @@ export async function saveEntries(_: ActionState, formData: FormData): Promise<A
   const periodId = Number(formData.get("periodId"));
   const siteId = Number(formData.get("siteId"));
   const group = GROUP_BY_KEY.get(String(formData.get("group")));
-  const period = db.select().from(periods).where(eq(periods.id, periodId)).get();
+  const period = await db.select().from(periods).where(eq(periods.id, periodId)).then(first);
   if (!period || !group) return { error: "Not found." };
   assertAccountAccess(user, period.accountId);
   if (period.status === "approved") return { error: "This period is approved and locked. An admin can reopen it." };
   if (siteId !== 0) {
-    const site = db.select().from(sites).where(and(eq(sites.id, siteId), eq(sites.accountId, period.accountId))).get();
+    const site = await db.select().from(sites).where(and(eq(sites.id, siteId), eq(sites.accountId, period.accountId))).then(first);
     if (!site) return { error: "Site not found." };
   }
 
-  const fields = fieldsForGroup(group, getCustomFields(period.accountId)).filter((f) =>
+  const fields = fieldsForGroup(group, await getCustomFields(period.accountId)).filter((f) =>
     siteId === 0 ? f.kind !== "computed" && (f.kind !== "input" || f.level === "account") : f.kind === "input" && f.level === "site",
   );
 
@@ -119,36 +118,47 @@ export async function saveEntries(_: ActionState, formData: FormData): Promise<A
   });
   if (Object.keys(fieldErrors).length) return { error: "Some values need fixing.", fieldErrors };
 
-  let changed = 0;
-  db.transaction((tx) => {
-    for (const r of rows) {
-      const existing = tx
-        .select()
-        .from(entries)
-        .where(and(eq(entries.periodId, periodId), eq(entries.siteId, siteId), eq(entries.fieldKey, r.fieldKey)))
-        .get();
-      const same = existing && existing.value === r.value && existing.unit === r.unit && existing.text === r.text && existing.reference === r.reference && existing.comment === r.comment;
-      if (same) continue;
-      if (!existing && r.value === null && !r.text && !r.reference && !r.comment) continue;
-      changed++;
-      tx.insert(entries)
-        .values(r)
-        .onConflictDoUpdate({
-          target: [entries.periodId, entries.siteId, entries.fieldKey],
-          set: { value: r.value, unit: r.unit, text: r.text, reference: r.reference, comment: r.comment, updatedById: user.id, updatedAt: new Date() },
-        })
-        .run();
-    }
-    if (changed && period.status !== "draft") {
-      tx.delete(signoffs).where(and(eq(signoffs.accountId, period.accountId), eq(signoffs.subject, `period:${periodId}`))).run();
-      tx.update(periods).set({ status: "draft", updatedAt: new Date() }).where(eq(periods.id, periodId)).run();
-    } else if (changed) {
-      tx.update(periods).set({ updatedAt: new Date() }).where(eq(periods.id, periodId)).run();
-    }
+  const existing = new Map(
+    (await db
+      .select()
+      .from(entries)
+      .where(and(eq(entries.periodId, periodId), eq(entries.siteId, siteId)))).map((e) => [e.fieldKey, e]),
+  );
+  const changedRows = rows.filter((r) => {
+    const e = existing.get(r.fieldKey);
+    if (!e) return r.value !== null || !!r.text || !!r.reference || !!r.comment;
+    return e.value !== r.value || e.unit !== r.unit || e.text !== r.text || e.reference !== r.reference || e.comment !== r.comment;
   });
+  const changed = changedRows.length;
 
   if (changed) {
-    audit({
+    await db.transaction(async (tx) => {
+      await tx
+        .insert(entries)
+        .values(changedRows)
+        .onConflictDoUpdate({
+          target: [entries.periodId, entries.siteId, entries.fieldKey],
+          set: {
+            value: sql`excluded.value`,
+            unit: sql`excluded.unit`,
+            text: sql`excluded.text`,
+            reference: sql`excluded.reference`,
+            comment: sql`excluded.comment`,
+            updatedById: sql`excluded.updated_by_id`,
+            updatedAt: sql`excluded.updated_at`,
+          },
+        });
+      if (period.status !== "draft") {
+        await tx.delete(signoffs).where(and(eq(signoffs.accountId, period.accountId), eq(signoffs.subject, `period:${periodId}`)));
+        await tx.update(periods).set({ status: "draft", updatedAt: new Date() }).where(eq(periods.id, periodId));
+      } else {
+        await tx.update(periods).set({ updatedAt: new Date() }).where(eq(periods.id, periodId));
+      }
+    });
+  }
+
+  if (changed) {
+    await audit({
       userId: user.id,
       accountId: period.accountId,
       action: `updated ${changed} value${changed === 1 ? "" : "s"}`,

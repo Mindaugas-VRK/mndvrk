@@ -9,7 +9,7 @@ export default async function PillarPage(props: PageProps<"/dashboard/kpis/pilla
   const { account } = await requireAccount("data:view");
   const { pillar } = await props.params;
   if (!(pillar in PILLARS)) notFound();
-  const latest = loadSeries(account.id).at(-1);
+  const latest = (await loadSeries(account.id)).at(-1);
   return (
     <>
       <PageHeader title={PILLARS[pillar as PillarKey].title} crumbs={[{ label: "ESG KPI's", href: "/dashboard/kpis" }]} />

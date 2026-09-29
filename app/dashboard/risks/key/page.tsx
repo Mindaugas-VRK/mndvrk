@@ -17,7 +17,7 @@ export default async function KeyRisksPage(props: PageProps<"/dashboard/risks/ke
   const levelFilter = (typeof sp.level === "string" && sp.level in RISK_LEVELS ? sp.level : undefined) as RiskLevel | undefined;
   const scoreFilter = typeof sp.score === "string" ? Number(sp.score) : undefined;
 
-  const all = listRisks(account.id)
+  const all = (await listRisks(account.id))
     .map((r) => ({ ...r, score: riskScore(r.probability, r.impact) }))
     .sort((a, b) => b.score - a.score);
   const rows = all.filter((r) => (!levelFilter || riskLevel(r.score) === levelFilter) && (!scoreFilter || r.score === scoreFilter));

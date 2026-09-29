@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { db, first } from "@/lib/db";
 import { accounts, customFields, sites } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth/dal";
 import { audit } from "@/lib/audit";
@@ -22,8 +22,8 @@ export async function createAccount(_: ActionState, formData: FormData): Promise
   const user = await requireUser("accounts:manage");
   const parsed = AccountSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
-  const row = db.insert(accounts).values(parsed.data).returning({ id: accounts.id }).get();
-  audit({ userId: user.id, accountId: row.id, action: "created", entity: "account", detail: parsed.data.name });
+  const [row] = await db.insert(accounts).values(parsed.data).returning({ id: accounts.id });
+  await audit({ userId: user.id, accountId: row.id, action: "created", entity: "account", detail: parsed.data.name });
   redirect(`/dashboard/settings/accounts/${row.id}`);
 }
 
@@ -32,8 +32,8 @@ export async function updateAccount(_: ActionState, formData: FormData): Promise
   const id = Number(formData.get("id"));
   const parsed = AccountSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
-  db.update(accounts).set({ ...parsed.data, updatedAt: new Date() }).where(eq(accounts.id, id)).run();
-  audit({ userId: user.id, accountId: id, action: "updated", entity: "account" });
+  await db.update(accounts).set({ ...parsed.data, updatedAt: new Date() }).where(eq(accounts.id, id));
+  await audit({ userId: user.id, accountId: id, action: "updated", entity: "account" });
   revalidatePath("/dashboard", "layout");
   return { success: "Account saved." };
 }
@@ -50,8 +50,8 @@ export async function createSite(_: ActionState, formData: FormData): Promise<Ac
   const accountId = Number(formData.get("accountId"));
   const parsed = SiteSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
-  db.insert(sites).values({ ...parsed.data, accountId }).run();
-  audit({ userId: user.id, accountId, action: "created", entity: "site", detail: parsed.data.name });
+  await db.insert(sites).values({ ...parsed.data, accountId });
+  await audit({ userId: user.id, accountId, action: "created", entity: "site", detail: parsed.data.name });
   revalidatePath(`/dashboard/settings/accounts/${accountId}`);
   return { success: `Added ${parsed.data.name}.` };
 }
@@ -59,10 +59,10 @@ export async function createSite(_: ActionState, formData: FormData): Promise<Ac
 export async function toggleSite(formData: FormData) {
   const user = await requireUser("accounts:manage");
   const id = Number(formData.get("id"));
-  const site = db.select().from(sites).where(eq(sites.id, id)).get();
+  const site = await db.select().from(sites).where(eq(sites.id, id)).then(first);
   if (!site) return;
-  db.update(sites).set({ active: !site.active, updatedAt: new Date() }).where(eq(sites.id, id)).run();
-  audit({ userId: user.id, accountId: site.accountId, action: site.active ? "deactivated" : "activated", entity: "site", detail: site.name });
+  await db.update(sites).set({ active: !site.active, updatedAt: new Date() }).where(eq(sites.id, id));
+  await audit({ userId: user.id, accountId: site.accountId, action: site.active ? "deactivated" : "activated", entity: "site", detail: site.name });
   revalidatePath(`/dashboard/settings/accounts/${site.accountId}`);
 }
 
@@ -79,10 +79,9 @@ export async function createCustomField(_: ActionState, formData: FormData): Pro
   const accountId = Number(formData.get("accountId"));
   const parsed = CustomFieldSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
-  db.insert(customFields)
-    .values({ ...parsed.data, siteLevel: parsed.data.siteLevel === "site", accountId })
-    .run();
-  audit({ userId: user.id, accountId, action: "created", entity: "custom-field", detail: parsed.data.label });
+  await db.insert(customFields)
+    .values({ ...parsed.data, siteLevel: parsed.data.siteLevel === "site", accountId });
+  await audit({ userId: user.id, accountId, action: "created", entity: "custom-field", detail: parsed.data.label });
   revalidatePath(`/dashboard/settings/accounts/${accountId}`);
   return { success: `Added custom KPI “${parsed.data.label}”.` };
 }
@@ -91,7 +90,7 @@ export async function deleteCustomField(formData: FormData) {
   const user = await requireUser("accounts:manage");
   const id = Number(formData.get("id"));
   const accountId = Number(formData.get("accountId"));
-  db.delete(customFields).where(and(eq(customFields.id, id), eq(customFields.accountId, accountId))).run();
-  audit({ userId: user.id, accountId, action: "deleted", entity: "custom-field", detail: String(id) });
+  await db.delete(customFields).where(and(eq(customFields.id, id), eq(customFields.accountId, accountId)));
+  await audit({ userId: user.id, accountId, action: "deleted", entity: "custom-field", detail: String(id) });
   revalidatePath(`/dashboard/settings/accounts/${accountId}`);
 }

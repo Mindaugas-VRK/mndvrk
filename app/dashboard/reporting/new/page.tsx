@@ -15,7 +15,7 @@ export default async function NewPeriodPage() {
       <Card className="p-6">
         <PeriodForm
           accountName={account.name}
-          owners={accountUsers(account.id).filter((u) => u.role !== "viewer")}
+          owners={(await accountUsers(account.id)).filter((u) => u.role !== "viewer")}
           initial={{ title: `FY ${y}`, startDate: `${y}-01-01`, endDate: `${y}-12-31` }}
         />
       </Card>

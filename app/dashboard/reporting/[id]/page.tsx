@@ -20,15 +20,15 @@ export const metadata: Metadata = { title: "Reporting period" };
 export default async function PeriodPage(props: PageProps<"/dashboard/reporting/[id]">) {
   const { user, account } = await requireAccount("data:view");
   const { id } = await props.params;
-  const period = getPeriod(Number(id), account.id);
+  const period = await getPeriod(Number(id), account.id);
   if (!period) notFound();
-  const sites = getSites(account.id);
-  const custom = getCustomFields(account.id);
-  const data = loadPeriodData(period.id, account.id);
+  const sites = await getSites(account.id);
+  const custom = await getCustomFields(account.id);
+  const data = await loadPeriodData(period.id, account.id);
   const overall = overallCompleteness(data, sites, custom);
   const locked = period.status === "approved";
   const editable = can(user.role, "data:edit") && !locked;
-  const activity = getActivity(account.id, `period:${period.id}`, 15);
+  const activity = await getActivity(account.id, `period:${period.id}`, 15);
 
   return (
     <>
@@ -66,7 +66,7 @@ export default async function PeriodPage(props: PageProps<"/dashboard/reporting/
       </div>
 
       <h2 className="mt-8 mb-4 text-lg font-bold text-teal-500">Approval workflow</h2>
-      <SignoffCards subject={`period:${period.id}`} signoffs={getSignoffs(account.id, `period:${period.id}`)} user={user} path={`/dashboard/reporting/${period.id}`} />
+      <SignoffCards subject={`period:${period.id}`} signoffs={await getSignoffs(account.id, `period:${period.id}`)} user={user} path={`/dashboard/reporting/${period.id}`} />
       <p className="mt-2 text-xs text-ink-400">Prepared by the data owner (e.g. engineer / HR), reviewed by a second person, approved by an admin (e.g. site / country manager). Changing data after sign-off resets the workflow.</p>
 
       <div className="mt-8 grid gap-6 xl:grid-cols-2">
@@ -75,7 +75,7 @@ export default async function PeriodPage(props: PageProps<"/dashboard/reporting/
           <div className="p-6">
             <PeriodForm
               accountName={account.name}
-              owners={accountUsers(account.id).filter((u) => u.role !== "viewer")}
+              owners={(await accountUsers(account.id)).filter((u) => u.role !== "viewer")}
               initial={{ id: period.id, title: period.title, startDate: period.startDate, endDate: period.endDate, ownerId: period.ownerId }}
               locked={!editable}
             />

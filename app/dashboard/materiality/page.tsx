@@ -16,7 +16,7 @@ export default async function MaterialTopicsPage() {
         crumbs={[{ label: "Materiality", href: "/dashboard/materiality" }]}
         description="Topics deemed material to the organisation, with their policies, procedures and linked KPIs."
       />
-      <TopicGrid categories={Object.keys(TOPIC_CATEGORIES) as TopicCategory[]} states={getTopicStates(account.id)} />
+      <TopicGrid categories={Object.keys(TOPIC_CATEGORIES) as TopicCategory[]} states={await getTopicStates(account.id)} />
     </>
   );
 }

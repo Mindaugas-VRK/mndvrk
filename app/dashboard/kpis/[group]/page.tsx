@@ -25,13 +25,13 @@ export default async function KpiPage(props: PageProps<"/dashboard/kpis/[group]"
   const group = GROUP_BY_KEY.get(key);
   if (!group) notFound();
 
-  const series = loadSeries(account.id);
+  const series = await loadSeries(account.id);
   const latest = series.at(-1);
-  const targets = getTargets(account.id);
-  const note = getKpiNote(account.id, key);
+  const targets = await getTargets(account.id);
+  const note = await getKpiNote(account.id, key);
   const editable = can(user.role, "data:edit");
-  const custom = getCustomFields(account.id).filter((c) => c.groupKey === key);
-  const sites = getSites(account.id);
+  const custom = (await getCustomFields(account.id)).filter((c) => c.groupKey === key);
+  const sites = await getSites(account.id);
   const targetYear = latest ? Number(latest.period.endDate.slice(0, 4)) + 1 : new Date().getFullYear();
 
   const disclosures = [
@@ -112,7 +112,7 @@ export default async function KpiPage(props: PageProps<"/dashboard/kpis/[group]"
             Breakdown by region, country, city or site: <Link className="font-semibold text-teal-500" href={`/dashboard/reporting/${latest.period.id}/results?group=${key}&level=site`}>open results</Link>
           </p>
           <div className="mt-6">
-            <SignoffCards subject={`period:${latest.period.id}`} signoffs={getSignoffs(account.id, `period:${latest.period.id}`)} user={user} path={`/dashboard/kpis/${key}`} readOnly />
+            <SignoffCards subject={`period:${latest.period.id}`} signoffs={await getSignoffs(account.id, `period:${latest.period.id}`)} user={user} path={`/dashboard/kpis/${key}`} readOnly />
           </div>
         </>
       )}

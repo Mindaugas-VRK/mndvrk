@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default async function BlogPage() {
   await connection();
-  const posts = getPublishedPosts();
+  const posts = await getPublishedPosts();
 
   return (
     <>

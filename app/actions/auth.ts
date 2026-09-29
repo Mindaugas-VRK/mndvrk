@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { db, first } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth/dal";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
@@ -23,7 +23,7 @@ export async function login(_: ActionState, formData: FormData): Promise<ActionS
   });
   if (!parsed.success) return { error: "Enter a valid email and password." };
 
-  const user = db.select().from(users).where(eq(users.email, parsed.data.email)).get();
+  const user = await db.select().from(users).where(eq(users.email, parsed.data.email)).then(first);
   const ok = user ? await verifyPassword(parsed.data.password, user.passwordHash) : false;
   if (!user || !ok || !user.active) return { error: "Invalid email or password." };
 
@@ -45,14 +45,13 @@ export async function changePassword(_: ActionState, formData: FormData): Promis
   if (!next.success) return { fieldErrors: { password: next.error.issues.map((i) => i.message) } };
   if (next.data !== formData.get("confirm")) return { fieldErrors: { confirm: ["Passwords do not match."] } };
 
-  const user = db.select().from(users).where(eq(users.id, me.id)).get();
+  const user = await db.select().from(users).where(eq(users.id, me.id)).then(first);
   if (!user || !(await verifyPassword(current, user.passwordHash))) {
     return { fieldErrors: { current: ["Current password is incorrect."] } };
   }
 
-  db.update(users)
+  await db.update(users)
     .set({ passwordHash: await hashPassword(next.data), updatedAt: new Date() })
-    .where(eq(users.id, me.id))
-    .run();
+    .where(eq(users.id, me.id));
   return { success: "Password updated." };
 }

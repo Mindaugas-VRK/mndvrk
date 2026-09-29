@@ -7,7 +7,7 @@ import { ACCOUNT_COOKIE, accessibleAccounts, requireUser } from "@/lib/auth/dal"
 export async function switchAccount(formData: FormData) {
   const user = await requireUser();
   const id = Number(formData.get("accountId"));
-  if (!accessibleAccounts(user).some((a) => a.id === id)) return;
+  if (!(await accessibleAccounts(user)).some((a) => a.id === id)) return;
   (await cookies()).set(ACCOUNT_COOKIE, String(id), {
     httpOnly: true,
     sameSite: "lax",

@@ -4,7 +4,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { db, first } from "@/lib/db";
 import { posts } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth/dal";
 import { slugify } from "@/lib/utils";
@@ -34,11 +34,11 @@ export async function savePost(_: ActionState, formData: FormData): Promise<Acti
   const slug = slugify(parsed.data.slug || parsed.data.title);
   if (!slug) return { fieldErrors: { slug: ["Slug can't be empty."] } };
 
-  const clash = db
+  const clash = await db
     .select({ id: posts.id })
     .from(posts)
     .where(id ? and(eq(posts.slug, slug), ne(posts.id, id)) : eq(posts.slug, slug))
-    .get();
+    .then(first);
   if (clash) return { fieldErrors: { slug: ["Another post already uses this slug."] } };
 
   const published = parsed.data.published === "on";
@@ -53,17 +53,15 @@ export async function savePost(_: ActionState, formData: FormData): Promise<Acti
 
   let previousSlug: string | undefined;
   if (id) {
-    const existing = db.select().from(posts).where(eq(posts.id, id)).get();
+    const existing = await db.select().from(posts).where(eq(posts.id, id)).then(first);
     if (!existing) return { error: "Post not found." };
     previousSlug = existing.slug;
-    db.update(posts)
+    await db.update(posts)
       .set({ ...fields, publishedAt: published ? (existing.publishedAt ?? new Date()) : existing.publishedAt })
-      .where(eq(posts.id, id))
-      .run();
+      .where(eq(posts.id, id));
   } else {
-    db.insert(posts)
-      .values({ ...fields, authorId: user.id, publishedAt: published ? new Date() : null })
-      .run();
+    await db.insert(posts)
+      .values({ ...fields, authorId: user.id, publishedAt: published ? new Date() : null });
   }
 
   revalidateBlog(slug);
@@ -74,8 +72,8 @@ export async function savePost(_: ActionState, formData: FormData): Promise<Acti
 export async function deletePost(formData: FormData) {
   await requireUser("blog:manage");
   const id = Number(formData.get("id"));
-  const post = db.select().from(posts).where(eq(posts.id, id)).get();
-  db.delete(posts).where(eq(posts.id, id)).run();
+  const post = await db.select().from(posts).where(eq(posts.id, id)).then(first);
+  await db.delete(posts).where(eq(posts.id, id));
   revalidateBlog(post?.slug);
   redirect("/dashboard/blog");
 }

@@ -6,7 +6,7 @@ import { ConfirmButton } from "@/components/confirm-button";
 import { AccountForm, CustomFieldForm, SiteForm } from "@/components/forms/account-forms";
 import { Badge, Card, PageHeader, buttonStyles, tableHead } from "@/components/ui";
 import { requireUser } from "@/lib/auth/dal";
-import { db } from "@/lib/db";
+import { db, first } from "@/lib/db";
 import { accounts } from "@/lib/db/schema";
 import { getCustomFields, getSites } from "@/lib/data";
 import { GROUP_BY_KEY, KPI_GROUPS } from "@/lib/gri/catalog";
@@ -22,10 +22,10 @@ const DIM_LABELS: Record<Dimension, string> = {
 export default async function AccountSettingsPage(props: PageProps<"/dashboard/settings/accounts/[id]">) {
   await requireUser("accounts:manage");
   const { id } = await props.params;
-  const account = Number.isInteger(Number(id)) ? db.select().from(accounts).where(eq(accounts.id, Number(id))).get() : undefined;
+  const account = Number.isInteger(Number(id)) ? await db.select().from(accounts).where(eq(accounts.id, Number(id))).then(first) : undefined;
   if (!account) notFound();
-  const sites = getSites(account.id, true);
-  const custom = getCustomFields(account.id);
+  const sites = await getSites(account.id, true);
+  const custom = await getCustomFields(account.id);
 
   return (
     <>

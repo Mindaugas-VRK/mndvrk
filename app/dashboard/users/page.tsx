@@ -15,12 +15,11 @@ export const metadata: Metadata = { title: "Users" };
 
 export default async function UsersPage() {
   const me = await requireUser("users:manage");
-  const rows = db
+  const rows = await db
     .select({ id: users.id, name: users.name, email: users.email, role: users.role, active: users.active, createdAt: users.createdAt, accountId: users.accountId, jobTitle: users.jobTitle })
     .from(users)
-    .orderBy(asc(users.name))
-    .all();
-  const accounts = accessibleAccounts(me).map((a) => ({ id: a.id, name: a.name }));
+    .orderBy(asc(users.name));
+  const accounts = (await accessibleAccounts(me)).map((a) => ({ id: a.id, name: a.name }));
 
   return (
     <>

@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Blog" };
 
 export default async function BlogAdminPage() {
   await requireUser("blog:manage");
-  const rows = db.select().from(posts).orderBy(desc(posts.updatedAt)).all();
+  const rows = await db.select().from(posts).orderBy(desc(posts.updatedAt));
 
   return (
     <>

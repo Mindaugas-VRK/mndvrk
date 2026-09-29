@@ -6,7 +6,7 @@ import { ConfirmButton } from "@/components/confirm-button";
 import { RiskForm } from "@/components/forms/risk-form";
 import { Card, CardHeader, LinkPill, PageHeader } from "@/components/ui";
 import { requireAccount } from "@/lib/auth/dal";
-import { db } from "@/lib/db";
+import { db, first } from "@/lib/db";
 import { risks } from "@/lib/db/schema";
 import { GROUP_BY_KEY } from "@/lib/gri/catalog";
 import { RISK_LEVELS, riskLevel, riskScore } from "@/lib/gri/risks";
@@ -18,7 +18,7 @@ export const metadata: Metadata = { title: "Risk" };
 export default async function RiskPage(props: PageProps<"/dashboard/risks/[id]">) {
   const { user, account } = await requireAccount("data:view");
   const { id } = await props.params;
-  const risk = Number.isInteger(Number(id)) ? db.select().from(risks).where(and(eq(risks.id, Number(id)), eq(risks.accountId, account.id))).get() : undefined;
+  const risk = Number.isInteger(Number(id)) ? await db.select().from(risks).where(and(eq(risks.id, Number(id)), eq(risks.accountId, account.id))).then(first) : undefined;
   if (!risk) notFound();
   const score = riskScore(risk.probability, risk.impact);
   const lvl = riskLevel(score);

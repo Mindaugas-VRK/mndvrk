@@ -28,8 +28,8 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   if (!account) redirect("/dashboard/no-account");
   const { denied } = await props.searchParams;
 
-  const topicStates = getTopicStates(account.id);
-  const risks = listRisks(account.id);
+  const topicStates = await getTopicStates(account.id);
+  const risks = await listRisks(account.id);
   const counts = new Map<number, number>();
   for (const r of risks) {
     const s = riskScore(r.probability, r.impact);
@@ -37,13 +37,13 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   }
   const critical = risks.filter((r) => riskLevel(riskScore(r.probability, r.impact)) === "critical").length;
 
-  const allSeries = loadSeries(account.id);
+  const allSeries = await loadSeries(account.id);
   // Headline figures and trends use approved periods only, so drafts don't skew comparisons.
   const series = allSeries.filter((s) => s.period.status === "approved");
   const latest = series.at(-1);
   const prev = series.at(-2);
-  const periods = listPeriods(account.id).slice(0, 4);
-  const sites = getSites(account.id);
+  const periods = (await listPeriods(account.id)).slice(0, 4);
+  const sites = await getSites(account.id);
 
   const ghg = series.map((s) => {
     const g = s.data.total();

@@ -18,12 +18,12 @@ export async function GET(_req: Request, ctx: RouteContext<"/dashboard/reporting
   if (!account || !can(user.role, "data:export")) return new Response("Unauthorized", { status: 401 });
 
   const { id } = await ctx.params;
-  const period = getPeriod(Number(id), account.id);
+  const period = await getPeriod(Number(id), account.id);
   if (!period) return new Response("Not found", { status: 404 });
 
-  const sites = getSites(account.id);
-  const data = loadPeriodData(period.id, account.id);
-  const custom = getCustomFields(account.id);
+  const sites = await getSites(account.id);
+  const data = await loadPeriodData(period.id, account.id);
+  const custom = await getCustomFields(account.id);
   const buckets = [...bucketsFor("total", sites), ...bucketsFor("region", sites), ...bucketsFor("country", sites), ...bucketsFor("city", sites), ...bucketsFor("site", sites)];
   const getters = buckets.map((b) => data.getter(b));
   const fields: { field: Field; group: string }[] = [

@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { db, first } from "@/lib/db";
 import { PROBABILITIES, risks } from "@/lib/db/schema";
 import { requireAccount } from "@/lib/auth/dal";
 import { audit } from "@/lib/audit";
@@ -36,15 +36,15 @@ export async function saveRisk(_: ActionState, formData: FormData): Promise<Acti
   const score = riskScore(parsed.data.probability, parsed.data.impact);
 
   if (id) {
-    const existing = db.select().from(risks).where(and(eq(risks.id, id), eq(risks.accountId, account.id))).get();
+    const existing = await db.select().from(risks).where(and(eq(risks.id, id), eq(risks.accountId, account.id))).then(first);
     if (!existing) return { error: "Risk not found." };
-    db.update(risks).set({ ...parsed.data, updatedAt: new Date() }).where(eq(risks.id, id)).run();
-    audit({ userId: user.id, accountId: account.id, action: "updated", entity: `risk:${id}`, detail: `${parsed.data.title} (score ${score})` });
+    await db.update(risks).set({ ...parsed.data, updatedAt: new Date() }).where(eq(risks.id, id));
+    await audit({ userId: user.id, accountId: account.id, action: "updated", entity: `risk:${id}`, detail: `${parsed.data.title} (score ${score})` });
     revalidatePath("/dashboard/risks", "layout");
     return { success: "Risk saved." };
   }
-  const row = db.insert(risks).values({ ...parsed.data, accountId: account.id, ownerId: user.id }).returning({ id: risks.id }).get();
-  audit({ userId: user.id, accountId: account.id, action: "created", entity: `risk:${row.id}`, detail: `${parsed.data.title} (score ${score})` });
+  const [row] = await db.insert(risks).values({ ...parsed.data, accountId: account.id, ownerId: user.id }).returning({ id: risks.id });
+  await audit({ userId: user.id, accountId: account.id, action: "created", entity: `risk:${row.id}`, detail: `${parsed.data.title} (score ${score})` });
   revalidatePath("/dashboard/risks", "layout");
   redirect(`/dashboard/risks/${row.id}`);
 }
@@ -52,8 +52,8 @@ export async function saveRisk(_: ActionState, formData: FormData): Promise<Acti
 export async function deleteRisk(formData: FormData) {
   const { user, account } = await requireAccount("data:edit");
   const id = Number(formData.get("id"));
-  db.delete(risks).where(and(eq(risks.id, id), eq(risks.accountId, account.id))).run();
-  audit({ userId: user.id, accountId: account.id, action: "deleted", entity: `risk:${id}` });
+  await db.delete(risks).where(and(eq(risks.id, id), eq(risks.accountId, account.id)));
+  await audit({ userId: user.id, accountId: account.id, action: "deleted", entity: `risk:${id}` });
   revalidatePath("/dashboard/risks", "layout");
   redirect("/dashboard/risks/key");
 }

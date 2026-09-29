@@ -1,8 +1,8 @@
 import { and, desc, eq } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { db, first } from "@/lib/db";
 import { posts, users } from "@/lib/db/schema";
 
-export function getPublishedPosts(limit?: number) {
+export async function getPublishedPosts(limit?: number) {
   const q = db
     .select({
       id: posts.id,
@@ -16,11 +16,11 @@ export function getPublishedPosts(limit?: number) {
     .leftJoin(users, eq(posts.authorId, users.id))
     .where(eq(posts.published, true))
     .orderBy(desc(posts.publishedAt));
-  return limit ? q.limit(limit).all() : q.all();
+  return limit ? await q.limit(limit) : await q;
 }
 
-export function getPublishedPost(slug: string) {
-  return db
+export async function getPublishedPost(slug: string) {
+  return await db
     .select({
       id: posts.id,
       slug: posts.slug,
@@ -34,5 +34,5 @@ export function getPublishedPost(slug: string) {
     .from(posts)
     .leftJoin(users, eq(posts.authorId, users.id))
     .where(and(eq(posts.slug, slug), eq(posts.published, true)))
-    .get();
+    .then(first);
 }

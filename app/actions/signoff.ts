@@ -2,7 +2,7 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { db } from "@/lib/db";
+import { db, first } from "@/lib/db";
 import { periods, signoffs, type SignoffStage } from "@/lib/db/schema";
 import { requireAccount } from "@/lib/auth/dal";
 import { audit } from "@/lib/audit";
@@ -27,19 +27,27 @@ export async function signOff(formData: FormData) {
   const cap = { prepared: "signoff:prepare", reviewed: "signoff:review", approved: "signoff:approve" } as const;
   if (!can(user.role, cap[stage])) return;
 
-  const existing = getSignoffs(account.id, subject);
+  const existing = await getSignoffs(account.id, subject);
   const idx = ORDER.indexOf(stage);
   if (idx > 0 && !existing[ORDER[idx - 1]]) return; // previous stage missing
   if (existing[stage]) return;
 
+  let periodId: number | null = null;
   if (subject.startsWith("period:")) {
-    const id = Number(subject.split(":")[1]);
-    const period = db.select().from(periods).where(and(eq(periods.id, id), eq(periods.accountId, account.id))).get();
+    periodId = Number(subject.split(":")[1]);
+    const period = await db.select({ id: periods.id }).from(periods).where(and(eq(periods.id, periodId), eq(periods.accountId, account.id))).then(first);
     if (!period) return;
-    db.update(periods).set({ status: STATUS[stage], updatedAt: new Date() }).where(eq(periods.id, id)).run();
   }
-  db.insert(signoffs).values({ accountId: account.id, subject, stage, userId: user.id }).run();
-  audit({ userId: user.id, accountId: account.id, action: stage, entity: subject });
+  const inserted = await db.transaction(async (tx) => {
+    // The unique (account, subject, stage) index makes a double click a no-op.
+    const rows = await tx.insert(signoffs).values({ accountId: account.id, subject, stage, userId: user.id }).onConflictDoNothing().returning({ id: signoffs.id });
+    if (rows.length && periodId !== null) {
+      await tx.update(periods).set({ status: STATUS[stage], updatedAt: new Date() }).where(eq(periods.id, periodId));
+    }
+    return rows.length > 0;
+  });
+  if (!inserted) return;
+  await audit({ userId: user.id, accountId: account.id, action: stage, entity: subject });
   revalidatePath(path);
   revalidatePath("/dashboard", "layout");
 }
@@ -50,12 +58,12 @@ export async function reopen(formData: FormData) {
   const subject = String(formData.get("subject"));
   const path = String(formData.get("path") || "/dashboard");
   if (!validSubject(subject)) return;
-  db.delete(signoffs).where(and(eq(signoffs.accountId, account.id), eq(signoffs.subject, subject))).run();
+  await db.delete(signoffs).where(and(eq(signoffs.accountId, account.id), eq(signoffs.subject, subject)));
   if (subject.startsWith("period:")) {
     const id = Number(subject.split(":")[1]);
-    db.update(periods).set({ status: "draft", updatedAt: new Date() }).where(and(eq(periods.id, id), eq(periods.accountId, account.id))).run();
+    await db.update(periods).set({ status: "draft", updatedAt: new Date() }).where(and(eq(periods.id, id), eq(periods.accountId, account.id)));
   }
-  audit({ userId: user.id, accountId: account.id, action: "reopened", entity: subject });
+  await audit({ userId: user.id, accountId: account.id, action: "reopened", entity: subject });
   revalidatePath(path);
   revalidatePath("/dashboard", "layout");
 }

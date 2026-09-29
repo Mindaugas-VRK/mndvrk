@@ -3,7 +3,7 @@ import { cache } from "react";
 import { asc, eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
+import { db, first } from "@/lib/db";
 import { accounts, users, type Account, type Role } from "@/lib/db/schema";
 import { can, type Capability } from "@/lib/permissions";
 import { SESSION_COOKIE, decrypt } from "./session";
@@ -28,7 +28,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const session = await decrypt(token);
   if (!session) return null;
 
-  const user = db.select().from(users).where(eq(users.id, session.userId)).get();
+  const user = await db.select().from(users).where(eq(users.id, session.userId)).then(first);
   if (!user || !user.active) return null;
   return {
     id: user.id,
@@ -49,16 +49,16 @@ export async function requireUser(capability?: Capability) {
 }
 
 /** Accounts the user may open: all for admins, their own for everyone else. */
-export function accessibleAccounts(user: CurrentUser): Account[] {
-  if (user.role === "admin") return db.select().from(accounts).orderBy(asc(accounts.name)).all();
+export async function accessibleAccounts(user: CurrentUser): Promise<Account[]> {
+  if (user.role === "admin") return await db.select().from(accounts).orderBy(asc(accounts.name));
   if (!user.accountId) return [];
-  const a = db.select().from(accounts).where(eq(accounts.id, user.accountId)).get();
+  const a = await db.select().from(accounts).where(eq(accounts.id, user.accountId)).then(first);
   return a ? [a] : [];
 }
 
 export const getAccountContext = cache(async () => {
   const user = await requireUser();
-  const list = accessibleAccounts(user);
+  const list = await accessibleAccounts(user);
   const wanted = Number((await cookies()).get(ACCOUNT_COOKIE)?.value);
   const account = list.find((a) => a.id === wanted) ?? list[0] ?? null;
   return { user, account, accounts: list };

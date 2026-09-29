@@ -20,8 +20,8 @@ export default async function TopicPage(props: PageProps<"/dashboard/materiality
   const { topic: key } = await props.params;
   const topic = TOPIC_BY_KEY.get(key);
   if (!topic) notFound();
-  const state = getTopicStates(account.id).get(key);
-  const risks = listRisks(account.id).filter((r) => r.topicKey === key);
+  const state = (await getTopicStates(account.id)).get(key);
+  const risks = (await listRisks(account.id)).filter((r) => r.topicKey === key);
   const content = state?.content ?? "";
   const isMaterial = state?.isMaterial ?? true;
 

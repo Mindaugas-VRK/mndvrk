@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Materiality assessment" };
 
 export default async function AssessmentPage() {
   const { user, account } = await requireAccount("data:view");
-  const a = getAssessment(account.id);
+  const a = await getAssessment(account.id);
   return (
     <>
       <PageHeader
@@ -20,7 +20,7 @@ export default async function AssessmentPage() {
       />
       <AssessmentForm data={a?.data ?? {}} readOnly={!can(user.role, "data:edit")} />
       <div className="mt-8">
-        <SignoffCards subject="materiality" signoffs={getSignoffs(account.id, "materiality")} user={user} path="/dashboard/materiality/assessment" />
+        <SignoffCards subject="materiality" signoffs={await getSignoffs(account.id, "materiality")} user={user} path="/dashboard/materiality/assessment" />
       </div>
     </>
   );

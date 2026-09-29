@@ -41,7 +41,7 @@ const FEATURES = [
 
 export default async function HomePage() {
   await connection();
-  const posts = getPublishedPosts(3);
+  const posts = await getPublishedPosts(3);
 
   return (
     <>

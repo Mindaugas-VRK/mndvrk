@@ -2,7 +2,7 @@
 
 Public website, blog and ESG reporting tool for [esgcounts.eu](https://esgcounts.eu).
 
-Built with Next.js 16 (App Router), React 19, Tailwind CSS 4, SQLite (better-sqlite3 + Drizzle ORM).
+Built with Next.js 16 (App Router), React 19, Tailwind CSS 4, PostgreSQL (Drizzle ORM). Hosted on Vercel with a Neon Postgres database in Frankfurt.
 Brand rules and logo files: [`brand/BRAND.md`](brand/BRAND.md).
 Product specs: [`docs/specs/`](docs/specs) (roadmap and the GRI indicator list the tool is built from).
 
@@ -32,21 +32,20 @@ Product specs: [`docs/specs/`](docs/specs) (roadmap and the GRI indicator list t
 Authorization is enforced server-side on every page and server action (`lib/auth/dal.ts`, `lib/permissions.ts`);
 `proxy.ts` only does an optimistic redirect to `/login`.
 
-## Getting started
+## Getting started (local)
 
 ```bash
 npm install
-cp .env.example .env.local        # set SESSION_SECRET for production
-npm run db:seed                   # creates the admin (+ demo data)
+cp .env.example .env.local        # set DATABASE_URL (Neon dev branch or local Docker Postgres)
+npm run db:migrate                # create tables
+npm run db:seed                   # admin + demo data
 npm run dev                       # http://localhost:3000
 ```
 
-The database and its migrations are created automatically on first start. Seeded logins:
+Seeded logins:
 
 - `admin@esgcounts.eu` / `ChangeMe-2026!` (or `ADMIN_EMAIL` / `ADMIN_PASSWORD`) — **change this**
 - Demo account *Baltic Manufacturing UAB* (password `Demo-2026-pass`): `engineer@`, `hr@` (users), `viewer@` (viewer), `manager@` (admin) `@demo.esgcounts.eu`
-
-Run with `SEED_DEMO=false` to create only the admin.
 
 ## Scripts
 
@@ -55,6 +54,7 @@ Run with `SEED_DEMO=false` to create only the admin.
 | `npm run dev` / `build` / `start` | Next.js |
 | `npm run lint` / `typecheck` | Checks |
 | `npm run db:generate` | New migration after editing `lib/db/schema.ts` |
+| `npm run db:migrate` | Apply migrations; create the first admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD` |
 | `npm run db:seed` | Seed admin and demo data |
 
 ## Where things live
@@ -64,11 +64,15 @@ Run with `SEED_DEMO=false` to create only the admin.
 - `lib/gri/risks.ts`, `lib/gri/topics.ts` — risk matrix and material topics
 - `app/(site)` — public pages; `app/dashboard` — the tool; `app/actions` — server actions
 
-## Deploying
+## Deploying to Vercel
 
-Runs anywhere Node 20.9+ runs with a persistent disk for SQLite (a VPS, Docker, Fly.io, Railway…):
-`npm ci && npm run build && npm start`, with `SESSION_SECRET` and `DATABASE_PATH` set, then point esgcounts.eu at it behind HTTPS.
-Serverless hosts (e.g. Vercel) need a hosted database instead of the local SQLite file.
+1. Import the GitHub repo in Vercel (framework: Next.js, defaults).
+2. **Storage → Create Database → Neon**, region Frankfurt, connect to all environments. This sets `DATABASE_URL`.
+3. **Settings → Environment Variables**: `SESSION_SECRET` (32+ random chars), `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `NEXT_PUBLIC_SITE_URL=https://esgcounts.eu`.
+4. Redeploy. `vercel.json` runs `npm run db:migrate` before each build: it applies migrations and creates the first admin if there are no users yet.
+5. **Settings → Domains**: add `esgcounts.eu` and set the DNS records Vercel shows at your registrar.
+
+To load the demo data into a database: `DATABASE_URL=… npm run db:seed` (skip in production, or use `SEED_DEMO=false`).
 
 ## Roadmap (from `docs/specs/Roadmap.xlsx`, not built yet)
 
