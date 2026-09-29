@@ -39,7 +39,12 @@ export default async function ResultsPage(props: PageProps<"/dashboard/reporting
         title="Results"
         crumbs={[{ label: "Reporting", href: "/dashboard/reporting" }, { label: period.title, href: `/dashboard/reporting/${period.id}` }]}
         description="Rollups by hierarchy level. Σ rows are calculated from the inputs below them."
-        actions={<a href={`/dashboard/reporting/${period.id}/export`} className={buttonStyles.secondary}>Export CSV</a>}
+        actions={
+          <>
+            <a href={`/dashboard/reporting/${period.id}/export/xlsx`} className={buttonStyles.secondary}>Excel</a>
+            <a href={`/dashboard/reporting/${period.id}/export`} className={buttonStyles.ghost}>CSV</a>
+          </>
+        }
       />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="text-xs font-semibold uppercase tracking-wider text-stone">Level</span>

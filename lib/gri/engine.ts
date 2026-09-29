@@ -86,6 +86,11 @@ export class PeriodData {
     return this.bySite.get(siteId)?.get(key);
   }
 
+  /** Every stored entry, site by site (siteId 0 = account level). */
+  allEntries(): Entry[] {
+    return [...this.bySite.values()].flatMap((m) => [...m.values()]);
+  }
+
   text(key: string) {
     return this.entry(0, key)?.text ?? "";
   }

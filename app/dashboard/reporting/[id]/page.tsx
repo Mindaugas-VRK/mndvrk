@@ -40,7 +40,9 @@ export default async function PeriodPage(props: PageProps<"/dashboard/reporting/
           <>
             <Link href={`/dashboard/reporting/${period.id}/results`} className={buttonStyles.secondary}>Results</Link>
             <Link href={`/dashboard/reporting/${period.id}/report`} className={buttonStyles.secondary}><Icon.doc className="h-4 w-4" /> GRI report</Link>
-            <a href={`/dashboard/reporting/${period.id}/export`} className={buttonStyles.secondary}><Icon.download className="h-4 w-4" /> CSV</a>
+            <a href={`/dashboard/reporting/${period.id}/export/xlsx`} className={buttonStyles.secondary}><Icon.download className="h-4 w-4" /> Excel</a>
+            <a href={`/dashboard/reporting/${period.id}/export/ixbrl`} className={buttonStyles.secondary} title="Inline XBRL: human- and machine-readable report"><Icon.download className="h-4 w-4" /> Inline XBRL</a>
+            <a href={`/dashboard/reporting/${period.id}/export`} className={buttonStyles.ghost}>CSV</a>
           </>
         }
       />
