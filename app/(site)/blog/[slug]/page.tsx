@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { LinkedInEmbed } from "@/components/linkedin-embed";
+import { embedUrl, postUrl } from "@/lib/linkedin/client";
 import { renderMarkdown } from "@/lib/markdown";
 import { getPublishedPost } from "@/lib/posts";
 import { formatDate } from "@/lib/utils";
@@ -14,7 +16,8 @@ export async function generateMetadata(props: PageProps<"/blog/[slug]">): Promis
   return {
     title: post.title,
     description: post.excerpt || undefined,
-    openGraph: { type: "article", title: post.title, description: post.excerpt || undefined },
+    openGraph: { type: "article", title: post.title, description: post.excerpt || undefined, publishedTime: post.publishedAt?.toISOString() },
+    alternates: { canonical: `/blog/${post.slug}` },
   };
 }
 
@@ -37,6 +40,7 @@ export default async function BlogPostPage(props: PageProps<"/blog/[slug]">) {
       <span className="brand-rule mt-6" />
       {post.excerpt && <p className="mt-6 text-lg leading-8 text-ink-400">{post.excerpt}</p>}
       <div className="prose-post mt-10" dangerouslySetInnerHTML={{ __html: renderMarkdown(post.content) }} />
+      {post.linkedinUrn && <LinkedInEmbed embedUrl={embedUrl(post.linkedinUrn)} postUrl={postUrl(post.linkedinUrn)} />}
     </article>
   );
 }

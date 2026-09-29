@@ -21,6 +21,8 @@ export type PeriodStatus = (typeof PERIOD_STATUSES)[number];
 export const SIGNOFF_STAGES = ["prepared", "reviewed", "approved"] as const;
 export type SignoffStage = (typeof SIGNOFF_STAGES)[number];
 
+export const POST_SOURCES = ["site", "linkedin"] as const;
+
 export const PROBABILITIES = ["A", "B", "C", "D", "E"] as const;
 export type Probability = (typeof PROBABILITIES)[number];
 
@@ -74,6 +76,11 @@ export const posts = pgTable("posts", {
   published: boolean("published").notNull().default(false),
   publishedAt: timestamp("published_at", { withTimezone: true }),
   authorId: integer("author_id").references(() => users.id, { onDelete: "set null" }),
+  /** "site" = written here; "linkedin" = imported from the LinkedIn page. */
+  source: text("source", { enum: POST_SOURCES }).notNull().default("site"),
+  /** The matching LinkedIn post (urn:li:share:… / urn:li:ugcPost:…), when shared or imported. */
+  linkedinUrn: text("linkedin_urn").unique(),
+  linkedinSharedAt: timestamp("linkedin_shared_at", { withTimezone: true }),
   ...timestamps,
 });
 
@@ -206,6 +213,17 @@ export const auditLog = pgTable("audit_log", {
   entity: text("entity").notNull(),
   detail: text("detail").notNull().default(""),
 }, (t) => [index("audit_log_account_idx").on(t.accountId, t.id)]);
+
+/**
+ * Third-party connections (currently only "linkedin"). Secrets in `data` are
+ * encrypted with lib/linkedin/crypto.ts before they are stored.
+ */
+export const integrations = pgTable("integrations", {
+  key: text("key").primaryKey(),
+  data: text("data").notNull().default(""),
+  settings: jsonb("settings").$type<Record<string, unknown>>().notNull().default({}),
+  updatedAt: ts("updated_at"),
+});
 
 export type Account = typeof accounts.$inferSelect;
 export type Site = typeof sites.$inferSelect;

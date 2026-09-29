@@ -70,7 +70,10 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
   const admin: NavSection[] = [];
   if (can(user.role, "accounts:manage")) admin.push({ href: "/dashboard/settings/accounts", label: "Accounts", icon: "building" });
   if (can(user.role, "users:manage")) admin.push({ href: "/dashboard/users", label: "Users", icon: "users" });
-  if (can(user.role, "blog:manage")) admin.push({ href: "/dashboard/blog", label: "Blog", icon: "pen" });
+  if (can(user.role, "blog:manage")) {
+    admin.push({ href: "/dashboard/blog", label: "Blog", icon: "pen" });
+    admin.push({ href: "/dashboard/settings/linkedin", label: "LinkedIn", icon: "globe" });
+  }
 
   const initials = user.name.split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 

@@ -19,7 +19,8 @@ Product specs: [`docs/specs/`](docs/specs) (roadmap and the GRI indicator list t
 | Risks | 5×5 probability × impact matrix (scores 1–25: Low / Medium / High / Critical), key-risks table, individual risks with hazard identification, rationale, mitigation, monitoring |
 | ESG KPIs | Every GRI indicator from `docs/specs/GRI_indicators_to_report_on.xlsx` (302, 305, 303, 306, 301, 403-9, 2-7, 2-8, 2-21, 2-27, 2-30): procedure, trend charts, targets, standards (GRI / SDG / UNGC / ESRS) |
 | Reporting | Reporting periods per account (start/end date, owner). Data is entered **per site** in any unit (kWh, MWh, GJ, m³, kg…) and **rolls up Site → City → Country → Region → Total**; formula fields (e.g. total energy = a + b + c − d, water consumption = withdrawal − discharge, injury rates per 1M hours, intensities with a free denominator) are computed at every level. Prepared → Reviewed → Approved workflow, audit trail, GRI content index, downloads as **Inline XBRL** (`.xhtml`, human- and machine-readable, see `docs/specs/XBRL.md`), **Excel** (`.xlsx`), CSV and PDF |
-| Admin | Accounts (client companies), sites, custom KPI fields, users, blog |
+| Admin | Accounts (client companies), sites, custom KPI fields, users, blog, LinkedIn sync |
+| LinkedIn | News → LinkedIn page on publish, LinkedIn page posts → news daily (Community Management API app required); manual “Share on LinkedIn” and post linking work without an app; branded share cards (`opengraph-image`). Setup steps: Admin → LinkedIn |
 
 ### Roles
 
