@@ -1,26 +1,96 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* ESGCounts brand tokens — see brand/BRAND.md. 500 is the exact brandbook colour. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-oxygen);
+  --font-display: var(--font-quicksand);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  --color-lime-50: #fafcf3;
+  --color-lime-100: #f3f7e2;
+  --color-lime-200: #e7efc5;
+  --color-lime-300: #d6e39b;
+  --color-lime-400: #bfd465;
+  --color-lime-500: #a9c52f;
+  --color-lime-600: #8ea527;
+  --color-lime-700: #738620;
+  --color-lime-800: #586618;
+  --color-lime-900: #404b12;
+  --color-lime-950: #292f0b;
+
+  --color-teal-50: #f2f5f6;
+  --color-teal-100: #e1e8e9;
+  --color-teal-200: #c4d2d3;
+  --color-teal-300: #9ab1b4;
+  --color-teal-400: #63878c;
+  --color-teal-500: #2c5d63;
+  --color-teal-600: #254e53;
+  --color-teal-700: #1e3f43;
+  --color-teal-800: #173033;
+  --color-teal-900: #112326;
+  --color-teal-950: #0b1618;
+
+  --color-ink-50: #f2f3f3;
+  --color-ink-100: #e1e3e3;
+  --color-ink-200: #c3c7c8;
+  --color-ink-300: #989fa0;
+  --color-ink-400: #606b6c;
+  --color-ink-500: #283739;
+  --color-ink-600: #222e30;
+  --color-ink-700: #1b2527;
+  --color-ink-800: #151d1e;
+  --color-ink-900: #0f1516;
+  --color-ink-950: #0a0d0e;
+
+  /* Secondary tints */
+  --color-ice: #e2ffff;
+  --color-pale-lime: #f2fedc;
+  --color-cream: #f9fbe7;
+  --color-mint: #daece6;
+
+  /* Neutrals */
+  --color-smoke: #f5f5f5;
+  --color-stone: #9ca3af;
+  --color-coal: #1b1b1b;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #ffffff;
+  color: var(--color-ink-500);
 }
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display), system-ui, sans-serif;
+}
+
+/* The short lime rule used under headings throughout the brandbook */
+.brand-rule {
+  display: block;
+  width: 34px;
+  height: 3px;
+  background: var(--color-lime-500);
+}
+
+/* Blog post body */
+.prose-post {
+  line-height: 1.75;
+  color: var(--color-ink-400);
+}
+.prose-post > * + * { margin-top: 1.1em; }
+.prose-post h2 { font-size: 1.5rem; font-weight: 700; color: var(--color-ink-500); margin-top: 2em; }
+.prose-post h3 { font-size: 1.2rem; font-weight: 700; color: var(--color-ink-500); margin-top: 1.6em; }
+.prose-post a { color: var(--color-teal-500); text-decoration: underline; text-decoration-color: var(--color-lime-500); text-underline-offset: 3px; }
+.prose-post strong { color: var(--color-ink-500); }
+.prose-post ul { list-style: disc; padding-left: 1.4em; }
+.prose-post ol { list-style: decimal; padding-left: 1.4em; }
+.prose-post li::marker { color: var(--color-lime-600); }
+.prose-post li + li { margin-top: 0.35em; }
+.prose-post blockquote { border-left: 3px solid var(--color-lime-500); padding-left: 1em; color: var(--color-ink-400); font-style: italic; }
+.prose-post code { background: var(--color-smoke); padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.9em; }
+.prose-post pre { background: var(--color-ink-500); color: #e2e8f0; padding: 1em; border-radius: 8px; overflow-x: auto; }
+.prose-post pre code { background: transparent; padding: 0; }
+.prose-post table { width: 100%; border-collapse: collapse; font-size: 0.95em; }
+.prose-post th, .prose-post td { border: 1px solid var(--color-teal-100); padding: 0.5em 0.75em; text-align: left; }
+.prose-post th { background: var(--color-cream); }
+.prose-post img { border-radius: 8px; }
