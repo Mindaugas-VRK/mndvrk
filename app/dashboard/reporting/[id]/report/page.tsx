@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PrintButton } from "@/components/print-button";
 import { StatusBadge } from "@/components/status";
-import { PageHeader } from "@/components/ui";
+import { PageHeader, buttonStyles } from "@/components/ui";
 import { requireAccount } from "@/lib/auth/dal";
 import { getCustomFields, getPeriod, getSignoffs, getSites, getTopicStates, loadPeriodData } from "@/lib/data";
 import { KPI_GROUPS, PILLARS, type Field } from "@/lib/gri/catalog";
@@ -39,8 +39,14 @@ export default async function ReportPage(props: PageProps<"/dashboard/reporting/
         <PageHeader
           title="GRI report draft"
           crumbs={[{ label: "Reporting", href: "/dashboard/reporting" }, { label: period.title, href: `/dashboard/reporting/${period.id}` }]}
-          description="A GRI content index with all reported values. Print it or save as PDF; digital tagging (XBRL) and AI-drafted narrative are on the roadmap."
-          actions={<PrintButton />}
+          description="A GRI content index with all reported values. Download it as Inline XBRL (human- and machine-readable, as required for CSRD digital reporting), as an Excel workbook, or print it as PDF."
+          actions={
+            <>
+              <a href={`/dashboard/reporting/${period.id}/export/ixbrl`} className={buttonStyles.secondary}>Inline XBRL</a>
+              <a href={`/dashboard/reporting/${period.id}/export/xlsx`} className={buttonStyles.secondary}>Excel</a>
+              <PrintButton />
+            </>
+          }
         />
       </div>
       <article className="mx-auto max-w-4xl rounded-2xl bg-white p-10 shadow-[0_2px_12px_rgba(40,55,57,0.06)] print:max-w-none print:p-0 print:shadow-none">

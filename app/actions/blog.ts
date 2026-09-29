@@ -8,6 +8,8 @@ import { db, first } from "@/lib/db";
 import { posts } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth/dal";
 import { slugify } from "@/lib/utils";
+import { getLinkedIn } from "@/lib/linkedin/store";
+import { publishToLinkedIn } from "@/lib/linkedin/sync";
 import type { ActionState } from "./types";
 
 const PostSchema = z.object({
@@ -52,21 +54,41 @@ export async function savePost(_: ActionState, formData: FormData): Promise<Acti
   };
 
   let previousSlug: string | undefined;
+  let postId = id;
+  let newlyPublished = false;
   if (id) {
     const existing = await db.select().from(posts).where(eq(posts.id, id)).then(first);
     if (!existing) return { error: "Post not found." };
     previousSlug = existing.slug;
+    newlyPublished = published && !existing.published && !existing.linkedinUrn;
     await db.update(posts)
       .set({ ...fields, publishedAt: published ? (existing.publishedAt ?? new Date()) : existing.publishedAt })
       .where(eq(posts.id, id));
   } else {
-    await db.insert(posts)
-      .values({ ...fields, authorId: user.id, publishedAt: published ? new Date() : null });
+    const [row] = await db.insert(posts)
+      .values({ ...fields, authorId: user.id, publishedAt: published ? new Date() : null })
+      .returning({ id: posts.id });
+    postId = row.id;
+    newlyPublished = published;
   }
 
   revalidateBlog(slug);
   if (previousSlug && previousSlug !== slug) revalidatePath(`/blog/${previousSlug}`);
-  redirect("/dashboard/blog");
+
+  // Auto-share to the LinkedIn page. A LinkedIn problem never blocks publishing on the site.
+  let linkedin = "";
+  if (newlyPublished && postId) {
+    const { connected, settings } = await getLinkedIn();
+    if (connected && settings.autoPublish && settings.organization) {
+      try {
+        await publishToLinkedIn(postId);
+        linkedin = "?linkedin=shared";
+      } catch {
+        linkedin = "?linkedin=failed";
+      }
+    }
+  }
+  redirect(`/dashboard/blog${linkedin}`);
 }
 
 export async function deletePost(formData: FormData) {

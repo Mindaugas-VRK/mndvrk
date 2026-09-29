@@ -18,6 +18,7 @@ export default function PrivacyPage() {
           <li>Account data for dashboard users: name, email address, role and a hashed password.</li>
           <li>ESG data your organisation enters into reports.</li>
           <li>A single strictly necessary session cookie, set only when you sign in.</li>
+          <li>News posts can show a LinkedIn post. It loads only when you click <em>Show LinkedIn post</em>; LinkedIn then processes data under its own privacy policy.</li>
         </ul>
         <h2>How we use it</h2>
         <p>Only to provide the ESGCounts service to your organisation. We do not sell personal data or use tracking cookies.</p>

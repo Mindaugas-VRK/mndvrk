@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { COMPANY_LEGAL_NAME } from "@/lib/utils";
+import { COMPANY_LEGAL_NAME, LINKEDIN_URL } from "@/lib/utils";
 import { Logo } from "./logo";
 
 export function SiteFooter() {
@@ -27,6 +27,7 @@ export function SiteFooter() {
             <li><Link className="hover:text-white" href="/about">About</Link></li>
             <li><Link className="hover:text-white" href="/contact">Contact</Link></li>
             <li><Link className="hover:text-white" href="/privacy">Privacy</Link></li>
+            {LINKEDIN_URL && <li><a className="hover:text-white" href={LINKEDIN_URL} target="_blank" rel="noopener noreferrer">LinkedIn</a></li>}
           </ul>
         </div>
       </div>

@@ -29,6 +29,8 @@ export async function getPublishedPost(slug: string) {
       content: posts.content,
       publishedAt: posts.publishedAt,
       updatedAt: posts.updatedAt,
+      source: posts.source,
+      linkedinUrn: posts.linkedinUrn,
       author: users.name,
     })
     .from(posts)

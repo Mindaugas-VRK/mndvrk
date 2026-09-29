@@ -20,5 +20,7 @@ export function cn(...classes: (string | false | null | undefined)[]) {
 /** Legal entity behind the ESGCounts brand. Use for copyright, legal and contract text. */
 export const COMPANY_LEGAL_NAME = "ESG COUNTS UAB";
 export const CONTACT_EMAIL = "info@esgcounts.eu";
+/** Public LinkedIn page, e.g. https://www.linkedin.com/company/esgcounts (set NEXT_PUBLIC_LINKEDIN_URL). */
+export const LINKEDIN_URL = process.env.NEXT_PUBLIC_LINKEDIN_URL || "";
 
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://esgcounts.eu";
