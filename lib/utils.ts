@@ -17,4 +17,8 @@ export function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");
 }
 
+/** Legal entity behind the ESGCounts brand. Use for copyright, legal and contract text. */
+export const COMPANY_LEGAL_NAME = "ESG COUNTS UAB";
+export const CONTACT_EMAIL = "info@esgcounts.eu";
+
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://esgcounts.eu";

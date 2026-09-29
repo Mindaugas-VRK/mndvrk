@@ -6,6 +6,10 @@ generated artifacts. Never redraw the logo or substitute other greens.
 
 The name is written **ESGCounts**, one word: "ESG" in lime, "Counts" in teal.
 
+The legal entity is **ESG COUNTS UAB** (Lithuania). Use the legal name for copyright lines, privacy and
+legal text, contracts and invoices; use the brand name **ESGCounts** everywhere else. In code it is
+`COMPANY_LEGAL_NAME` in `lib/utils.ts`.
+
 ## Logo files (`public/brand/`)
 
 Vector paths extracted straight from the brandbook (`brand/extract-logos.py` regenerates them).

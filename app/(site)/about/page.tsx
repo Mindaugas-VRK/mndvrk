@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SectionHeading } from "@/components/section";
+import { COMPANY_LEGAL_NAME } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "About",
@@ -27,6 +28,7 @@ export default function AboutPage() {
           <li><strong>Trust</strong>: role-based access and a review step before anything is published.</li>
           <li><strong>Progress</strong>: year-on-year comparisons that show where you are improving.</li>
         </ul>
+        <p>ESGCounts is developed and operated by <strong>{COMPANY_LEGAL_NAME}</strong>.</p>
       </div>
     </section>
   );

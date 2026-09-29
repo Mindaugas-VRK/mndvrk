@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { SectionHeading } from "@/components/section";
+import { COMPANY_LEGAL_NAME, CONTACT_EMAIL } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Contact",
   description: "Get in touch with the ESGCounts team to request a demo or ask a question.",
 };
 
-const EMAIL = "info@esgcounts.eu";
+const EMAIL = CONTACT_EMAIL;
 
 export default function ContactPage() {
   return (
@@ -26,6 +27,7 @@ export default function ContactPage() {
           <li>Which framework you report under (CSRD / ESRS, VSME, GRI)</li>
           <li>Your first reporting year</li>
         </ul>
+        <p className="mt-8 border-t border-white/15 pt-4 text-sm text-teal-100">{COMPANY_LEGAL_NAME} · Lithuania</p>
       </div>
     </section>
   );

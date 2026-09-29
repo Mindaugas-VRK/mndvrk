@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Oxygen, Quicksand } from "next/font/google";
-import { SITE_URL } from "@/lib/utils";
+import { COMPANY_LEGAL_NAME, SITE_URL } from "@/lib/utils";
 import "./globals.css";
 
 // Brand typefaces (brand/BRAND.md): Quicksand for headings, Oxygen for body copy.
@@ -25,6 +25,8 @@ export const metadata: Metadata = {
   description:
     "ESGCounts helps European companies collect, track and report ESG data aligned with CSRD / ESRS, GRI and VSME.",
   icons: { icon: "/brand/app-icon.svg" },
+  creator: COMPANY_LEGAL_NAME,
+  publisher: COMPANY_LEGAL_NAME,
   openGraph: {
     siteName: "ESGCounts",
     type: "website",

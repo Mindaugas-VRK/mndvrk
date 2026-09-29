@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SectionHeading } from "@/components/section";
+import { COMPANY_LEGAL_NAME, CONTACT_EMAIL } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Privacy policy" };
 
@@ -9,8 +10,8 @@ export default function PrivacyPage() {
       <SectionHeading eyebrow="Legal" title="Privacy policy" />
       <div className="prose-post mt-10">
         <p>
-          This page explains how ESGCounts (esgcounts.eu) processes personal data in line with the EU General Data
-          Protection Regulation (GDPR). <em>Replace this placeholder with your reviewed policy before launch.</em>
+          This page explains how {COMPANY_LEGAL_NAME}, the company behind ESGCounts (esgcounts.eu), processes personal
+          data in line with the EU General Data Protection Regulation (GDPR). {COMPANY_LEGAL_NAME} is the data controller. <em>Replace this placeholder with your reviewed policy before launch.</em>
         </p>
         <h2>What we collect</h2>
         <ul>
@@ -23,7 +24,7 @@ export default function PrivacyPage() {
         <h2>Your rights</h2>
         <p>
           You can request access to, correction of, or deletion of your personal data at any time by emailing{" "}
-          <a href="mailto:info@esgcounts.eu">info@esgcounts.eu</a>.
+          <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
         </p>
       </div>
     </section>

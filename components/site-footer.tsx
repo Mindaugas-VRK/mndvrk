@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { COMPANY_LEGAL_NAME } from "@/lib/utils";
 import { Logo } from "./logo";
 
 export function SiteFooter() {
@@ -31,7 +32,7 @@ export function SiteFooter() {
       </div>
       <div className="border-t border-white/10">
         <div className="mx-auto max-w-6xl px-4 py-6 text-xs text-teal-200 sm:px-6">
-          © {new Date().getFullYear()} ESG Counts · esgcounts.eu
+          © {new Date().getFullYear()} {COMPANY_LEGAL_NAME} · esgcounts.eu
         </div>
       </div>
     </footer>
