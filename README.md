@@ -54,7 +54,7 @@ Seeded logins:
 | `npm run dev` / `build` / `start` | Next.js |
 | `npm run lint` / `typecheck` | Checks |
 | `npm run db:generate` | New migration after editing `lib/db/schema.ts` |
-| `npm run db:migrate` | Apply migrations; create the first admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD` |
+| `npm run db:migrate` | Apply migrations; create the admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD` if missing (`RESET_ADMIN_PASSWORD=true` resets its password) |
 | `npm run db:seed` | Seed admin and demo data |
 
 ## Where things live
@@ -69,7 +69,7 @@ Seeded logins:
 1. Import the GitHub repo in Vercel (framework: Next.js, defaults).
 2. **Storage → Create Database → Neon**, region Frankfurt, connect to all environments. This sets `DATABASE_URL`.
 3. **Settings → Environment Variables**: `SESSION_SECRET` (32+ random chars), `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `NEXT_PUBLIC_SITE_URL=https://esgcounts.eu`.
-4. Redeploy. `vercel.json` runs `npm run db:migrate` before each build: it applies migrations and creates the first admin if there are no users yet.
+4. Redeploy. `vercel.json` runs `npm run db:migrate` before each build: it applies migrations and creates the `ADMIN_EMAIL` admin if it does not exist. Forgot the password? Set `RESET_ADMIN_PASSWORD=true`, redeploy, sign in, then remove it.
 5. **Settings → Domains**: add `esgcounts.eu` and set the DNS records Vercel shows at your registrar.
 
 To load the demo data into a database: `DATABASE_URL=… npm run db:seed` (skip in production, or use `SEED_DEMO=false`).
