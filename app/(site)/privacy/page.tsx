@@ -19,10 +19,11 @@ export default function PrivacyPage() {
           <li>ESG data your organisation enters into reports.</li>
           <li>A single strictly necessary session cookie, set only when you sign in.</li>
           <li>
-            <strong>Analytics, only with your consent:</strong> if you click <em>Accept</em> in the cookie banner, Google Analytics 4
-            (Google Ireland Ltd.) sets the cookies <code>_ga</code> and <code>_ga_*</code> (up to 2 years) to measure visits to the
-            public website, with IP anonymisation. The reporting tool (dashboard) is never tracked. You can change your choice at any
-            time via <em>Cookie settings</em> in the footer.
+            <strong>Analytics:</strong> the public website uses Google Analytics 4 (Google Ireland Ltd.) in Consent Mode. Only if
+            you click <em>Accept</em> in the cookie banner are the cookies <code>_ga</code> and <code>_ga_*</code> (up to 2 years) set
+            to measure visits. Without consent no cookies are set and Google receives only anonymous signals without identifiers,
+            used for aggregate statistics. The reporting tool (dashboard) is never measured. You can change your choice at any time
+            via <em>Cookie settings</em> in the footer.
           </li>
           <li>News posts can show a LinkedIn post. It loads only when you click <em>Show LinkedIn post</em>; LinkedIn then processes data under its own privacy policy.</li>
         </ul>
