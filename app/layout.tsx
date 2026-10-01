@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Oxygen, Quicksand } from "next/font/google";
+import { Analytics } from "@/components/analytics";
 import { COMPANY_LEGAL_NAME, SITE_URL } from "@/lib/utils";
 import "./globals.css";
 
@@ -40,7 +41,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${quicksand.variable} ${oxygen.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
