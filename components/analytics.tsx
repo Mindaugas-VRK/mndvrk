@@ -1,12 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { CONSENT_KEY as STORAGE_KEY, GA_ID } from "./analytics-config";
 
-const GA_ID = process.env.NEXT_PUBLIC_GA_ID || "G-REBVR1N779";
-const STORAGE_KEY = "esg_cookie_consent";
 export const OPEN_COOKIE_SETTINGS = "esg:open-cookie-settings";
 
 type Consent = "granted" | "denied" | null;
@@ -40,14 +38,27 @@ function isTracked(pathname: string) {
   return !pathname.startsWith("/dashboard") && !pathname.startsWith("/login");
 }
 
+type Gtag = (...args: unknown[]) => void;
+function gtag(...args: unknown[]) {
+  (window as unknown as { gtag?: Gtag }).gtag?.(...args);
+}
+
 /**
- * Google Analytics 4 with consent: gtag.js is only loaded after the visitor
- * clicks "Accept" (GDPR / ePrivacy). "Reject" keeps the site cookie-free.
+ * Cookie banner for Google Consent Mode v2. The tag itself is in the public
+ * layout (components/ga-tag.tsx) with everything denied; "Accept" grants
+ * analytics_storage. The reporting tool is never measured.
  */
 export function Analytics() {
   const pathname = usePathname();
   const consent = useConsent();
   const [reopened, setReopened] = useState(false);
+
+  const tracked = isTracked(pathname);
+
+  // Switch measurement off inside the dashboard, including after client-side navigation.
+  useEffect(() => {
+    (window as unknown as Record<string, boolean>)[`ga-disable-${GA_ID}`] = !tracked;
+  }, [tracked]);
 
   useEffect(() => {
     const reopen = () => setReopened(true);
@@ -59,6 +70,7 @@ export function Analytics() {
     try {
       localStorage.setItem(STORAGE_KEY, value);
     } catch {}
+    gtag("consent", "update", { analytics_storage: value });
     if (value === "denied" && consent === "granted") {
       // Withdrawing consent: remove GA cookies and reload so the tag is gone.
       for (const c of document.cookie.split(";")) {
@@ -76,21 +88,8 @@ export function Analytics() {
     window.dispatchEvent(new Event(CONSENT_CHANGED));
   }
 
-  const tracked = isTracked(pathname);
-
   return (
     <>
-      {consent === "granted" && tracked && (
-        <>
-          <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
-          <Script id="ga-init" strategy="afterInteractive">
-            {`window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', '${GA_ID}', { anonymize_ip: true });`}
-          </Script>
-        </>
-      )}
       {(consent === null || reopened) && tracked && (
         <div
           role="dialog"
